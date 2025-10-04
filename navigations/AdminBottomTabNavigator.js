@@ -8,6 +8,7 @@ import Dashboard from '../admin-screens/Dashboard';
 import ManageAccounts from '../admin-screens/ManageAccounts';
 import ManageDuty from '../admin-screens/DutyManagement'; 
 import GenerateQR from '../admin-screens/GenerateQr';
+import AdminProfile from '../admin-screens/AdminProfile';
 
 
 const Tab = createBottomTabNavigator();
@@ -24,24 +25,27 @@ export default function AdminBottomTabNavigator() {
         tabBarInactiveTintColor: '#6b7280', // Gray
         tabBarStyle: { height: 60, paddingBottom: 5 },
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-          if (route.name === 'Dashboard') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Accounts') {
-            iconName = focused ? 'people' : 'people-outline';
-          } else if (route.name === 'Duty') {
-            iconName = focused ? 'clipboard' : 'clipboard-outline';
-          }else if (route.name === 'QR') {
-            iconName = focused ? 'clipboard' : 'clipboard-outline';
-          }
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
+  let iconName;
+  if (route.name === 'Dashboard') {
+    iconName = focused ? 'home' : 'home-outline';
+  } else if (route.name === 'Accounts') {
+    iconName = focused ? 'people' : 'people-outline';
+  } else if (route.name === 'Duty') {
+    iconName = focused ? 'clipboard' : 'clipboard-outline';
+  } else if (route.name === 'QR') {
+    iconName = focused ? 'qr-code' : 'qr-code-outline';
+  } else if (route.name === 'Profile') {
+    iconName = focused ? 'person' : 'person-outline';
+  }
+  return <Ionicons name={iconName} size={size} color={color} />;
+},
       })}
     >
       <Tab.Screen name="Dashboard" component={Dashboard} />
       <Tab.Screen name="Accounts" component={ManageAccounts} />
       <Tab.Screen name="Duty" component={ManageDuty} />
       <Tab.Screen name="QR" component={GenerateQR} />
+      <Tab.Screen name="Profile" component={AdminProfile} />
     </Tab.Navigator>
   );
 }
