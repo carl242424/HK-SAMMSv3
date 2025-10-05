@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import Ionicons from "@expo/vector-icons/Ionicons"; // ✅ For password visibility icon
 
 const ScholarFormModal = ({
   visible,
@@ -24,15 +25,22 @@ const ScholarFormModal = ({
 }) => {
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [year, setYear] = useState(null);
   const [course, setCourse] = useState(null);
   const [dutyType, setDutyType] = useState(null);
-  const [isFocus, setIsFocus] = useState({ year: false, course: false, duty: false });
+  const [isFocus, setIsFocus] = useState({
+    year: false,
+    course: false,
+    duty: false,
+  });
 
   useEffect(() => {
     if (visible) {
       setStudentName(initialData?.name || "");
       setStudentId(initialData?.id || "");
+      setPassword(initialData?.password || ""); // ✅ load existing password if editing
       setYear(initialData?.year || null);
       setCourse(initialData?.course || null);
       setDutyType(initialData?.duty || null);
@@ -42,14 +50,15 @@ const ScholarFormModal = ({
   const isEditing = !!initialData;
 
   const handleSave = () => {
-    if (!studentName || !studentId || !year || !course || !dutyType) {
-      Alert.alert("Missing Info", "Please fill in all fields.");
+    if (!studentName || !studentId || !password || !year || !course || !dutyType) {
+      Alert.alert("Missing Info", "Please fill in all fields including password.");
       return;
     }
 
     const scholarData = {
       name: studentName,
       id: studentId,
+      password, // ✅ Include password
       year,
       course,
       duty: dutyType,
@@ -69,15 +78,18 @@ const ScholarFormModal = ({
             </Text>
 
             {/* Student Info */}
+            <Text style={styles.label}>Student Name</Text>
             <TextInput
               placeholder="Student Name"
+              placeholderTextColor="#888"
               value={studentName}
               onChangeText={setStudentName}
               style={styles.input}
             />
-
+            <Text style={styles.label}>Student ID</Text>
             <TextInput
               placeholder="00-0000-000000"
+              placeholderTextColor="#888"
               value={studentId}
               keyboardType="numeric"
               onChangeText={(text) => {
@@ -89,6 +101,31 @@ const ScholarFormModal = ({
               maxLength={14}
               style={styles.input}
             />
+
+           {/* Password Input Group */}
+<Text style={styles.label}>Password</Text>
+<View style={styles.passwordInputContainer}>
+  <TextInput
+    style={[styles.input, styles.passwordInput]}
+    value={password}
+    onChangeText={setPassword}
+    placeholder="Enter Password..."
+    placeholderTextColor="#888"
+    secureTextEntry={!showPassword}
+  />
+  <TouchableOpacity
+    onPress={() => setShowPassword(!showPassword)}
+    style={styles.eyeIcon}
+    activeOpacity={0.7}
+  >
+    <Ionicons
+      name={showPassword ? "eye-off" : "eye"}
+      size={20}
+      color="#6b7280"
+    />
+  </TouchableOpacity>
+</View>
+
 
             {/* Year Dropdown */}
             <Text style={styles.label}>Year</Text>
@@ -177,13 +214,13 @@ const ScholarFormModal = ({
                 setIsFocus({ ...isFocus, duty: false });
               }}
               renderLeftIcon={() => (
-  <AntDesign
-    style={styles.icon}
-    color={isFocus.duty ? "#0078d7" : "black"}
-    name="idcard"   // ✅ use this instead of "Safety"
-    size={18}
-  />
-)}
+                <AntDesign
+                  style={styles.icon}
+                  color={isFocus.duty ? "#0078d7" : "black"}
+                  name="idcard"
+                  size={18}
+                />
+              )}
             />
 
             {/* Buttons */}
@@ -228,6 +265,25 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 12,
   },
+passwordInputContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  width: "100%",
+  position: "relative",
+  marginBottom: 12,
+},
+passwordInput: {
+  flex: 1,
+  paddingRight: 40, // space for eye icon
+},
+eyeIcon: {
+  position: "absolute",
+  right: 12,
+  // larger touch area
+  zIndex: 20,
+  marginBottom: 6,
+},
+
   label: { fontWeight: "600", marginBottom: 5, fontSize: 14 },
   dropdown: {
     height: 40,
