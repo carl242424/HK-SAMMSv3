@@ -36,7 +36,7 @@ export default function ManageAccounts() {
       updated[editIndex] = data;
       setScholars(updated);
     } else {
-      setScholars([...scholars, { ...data, remainingHours: 100, status: "active" }]);
+      setScholars([...scholars, { ...data, remainingHours: 70, status: "active" }]);
     }
     resetForm();
   };
