@@ -17,7 +17,6 @@ export default function ScholarViewModal({ scholar, onClose, onDeactivate }) {
               <Text>Course: {scholar.course}</Text>
               <Text>Duty: {scholar.duty}</Text>
               <Text>Duty Remaining Hours: 55 hrs</Text>
-
               <TouchableOpacity style={styles.deactivateBtn} onPress={() => onDeactivate(scholar.index)}>
                 <Text style={{ color: "white" }}>Deactivate</Text>
               </TouchableOpacity>

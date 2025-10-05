@@ -12,7 +12,8 @@ import {
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import AntDesign from "@expo/vector-icons/AntDesign";
-
+import ConfettiCannon from "react-native-confetti-cannon"; 
+import { Ionicons } from "@expo/vector-icons";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const TIMES = [
   "7:00 AM","7:30 AM","8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM",
@@ -40,6 +41,8 @@ const ScholarDutyFormModal = ({
   const [dutyType, setDutyType] = useState(null);
   const [schedules, setSchedules] = useState([{ day: "", startTime: "", endTime: "", room: "" }]);
 
+    const [successModalVisible, setSuccessModalVisible] = useState(false); // ✅ Success modal state
+
   useEffect(() => {
     if (visible) {
       setStudentName(initialData?.name || "");
@@ -66,20 +69,27 @@ const ScholarDutyFormModal = ({
     );
 
   const handleSave = () => {
-    if (!isFormComplete) return Alert.alert("Missing Info", "Please fill in all fields.");
+  if (!isFormComplete) return Alert.alert("Missing Info", "Please fill in all fields.");
 
-    for (let s of schedules) {
-      const startIndex = TIMES.indexOf(s.startTime);
-      const endIndex = TIMES.indexOf(s.endTime);
-      if (startIndex >= endIndex) {
-        return Alert.alert("Invalid Time", "End time must be later than Start time.");
-      }
+  for (let s of schedules) {
+    const startIndex = TIMES.indexOf(s.startTime);
+    const endIndex = TIMES.indexOf(s.endTime);
+    if (startIndex >= endIndex) {
+      return Alert.alert("Invalid Time", "End time must be later than Start time.");
     }
+  }
 
-    const dutyData = { name: studentName, id: studentId, year, course, duty: dutyType, schedules };
-    onSave(dutyData, isEditing);
-    onClose();
-  };
+  const dutyData = { name: studentName, id: studentId, year, course, duty: dutyType, schedules };
+  onSave(dutyData, isEditing);
+
+  // ✅ Close the form modal, then show success modal
+  onClose();
+  setSuccessModalVisible(true);
+};
+
+ const closeSuccessModal = () => {
+  setSuccessModalVisible(false);
+};
 
   const addSchedule = () => {
     setSchedules([...schedules, { day: "", startTime: "", endTime: "", room: "" }]);
@@ -95,6 +105,7 @@ const ScholarDutyFormModal = ({
   const toDropdownData = (arr) => arr.map((v) => ({ label: v, value: v }));
 
   return (
+       <>
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
         <View style={styles.modalBox}>
@@ -264,6 +275,28 @@ const ScholarDutyFormModal = ({
         </View>
       </View>
     </Modal>
+     {/* 🎉 Success Modal */}
+    {/* 🎉 Success Modal */}
+<Modal visible={successModalVisible} transparent animationType="fade">
+  <View style={styles.successOverlay}>
+    {/* Confetti should be at overlay level, not inside box */}
+    <ConfettiCannon
+      count={150}
+      origin={{ x: -10, y: 0 }}
+      fadeOut={true}
+    />
+
+    <View style={styles.successBox}>
+      <TouchableOpacity style={styles.closeIcon} onPress={closeSuccessModal}>
+        <AntDesign name="close" size={22} color="#333" />
+      </TouchableOpacity>
+      
+      <Text style={styles.successText}>✅ Successfully Added New Scholar</Text>
+    </View>
+  </View>
+</Modal>
+
+    </>
   );
 };
 
@@ -320,6 +353,30 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: "green", padding: 10, borderRadius: 8, flex: 1 },
   cancelBtn: { backgroundColor: "red", padding: 10, borderRadius: 8, flex: 1 },
   btnText: { color: "#fff", textAlign: "center", fontWeight: "600" },
+ // ✅ Success Modal styles
+  successOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  successBox: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 12,
+    width: 300,
+    alignItems: "center",
+    position: "relative",
+  },
+  successText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "green",
+    textAlign: "center",
+    marginVertical: 20,
+  },
+  closeIcon: { position: "absolute", top: 10, right: 10 },
 });
+
 
 export default ScholarDutyFormModal;
