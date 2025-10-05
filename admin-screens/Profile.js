@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 
 const PRIMARY_COLOR = "#00A4DF";
 
-export default function AdminProfile() {
+export default function Profile() {
   // Example data (replace with real logged-in admin data)
   const adminData = {
     name: "John Doe",
@@ -13,13 +13,12 @@ export default function AdminProfile() {
   };
 
   const handleLogout = () => {
-    // Replace with real logout logic
+    // You can replace this with real logout logic
     console.log("Logged out");
   };
 
   return (
     <View style={styles.container}>
-      {/* Add spacing above title */}
       <Text style={styles.title}>Admin Profile</Text>
 
       {/* Profile Card */}
@@ -31,12 +30,7 @@ export default function AdminProfile() {
         <Text style={styles.value}>{adminData.id}</Text>
 
         <Text style={styles.label}>Status:</Text>
-        <Text
-          style={[
-            styles.value,
-            adminData.status === "Active" ? styles.active : styles.inactive,
-          ]}
-        >
+        <Text style={[styles.value, adminData.status === "Active" ? styles.active : styles.inactive]}>
           {adminData.status}
         </Text>
 
@@ -54,15 +48,7 @@ export default function AdminProfile() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-
-  // Added marginTop for spacing above the title
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-    marginTop: 40, // extra spacing above
-    textAlign: "center",
-  },
+  title: { fontSize: 22, fontWeight: "bold", marginBottom: 20, textAlign: "center" },
 
   profileCard: {
     backgroundColor: "#f9f9f9",
@@ -83,10 +69,10 @@ const styles = StyleSheet.create({
   inactive: { color: "red" },
 
   logoutBtn: {
-    backgroundColor: "#ffcccc", // light red
+    backgroundColor: "#e0e0e0", // light-colored button
     padding: 12,
     borderRadius: 6,
     alignItems: "center",
   },
-  logoutText: { color: "#a60000", fontWeight: "600" }, // darker red text
+  logoutText: { color: "#333", fontWeight: "600" },
 });

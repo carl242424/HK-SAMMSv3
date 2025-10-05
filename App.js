@@ -5,7 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // AdminBottomTabNavigator is in the 'navigations' folder
-import AdminBottomTabNavigator from './navigations/AdminBottomTabNavigator'; 
+import AdminBottomTabNavigator from './navigations/AdminBottomTabNavigator.js'; 
 
 // LoginScreen is in the 'screen' folder
 import LoginScreen from './screen/LoginScreen'; 

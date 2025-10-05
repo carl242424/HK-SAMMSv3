@@ -102,15 +102,19 @@ const ScholarDutyFormModal = ({
             <Text style={styles.title}>{isEditing ? "Edit Scholar Duty" : "Assign Scholar Duty"}</Text>
 
             {/* Student Info */}
+            <Text style={styles.label}>Student Name</Text>
             <TextInput
-              placeholder="Student Name"
+              placeholder="Enter Student Name"
+              placeholderTextColor="#888"
               value={studentName}
               onChangeText={setStudentName}
               style={styles.input}
             />
 
+            <Text style={styles.label}>Student ID</Text>
             <TextInput
-              placeholder="Student ID (01-2324-030012)"
+             placeholder="00-0000-000000"
+              placeholderTextColor="#888"
               value={studentId}
               keyboardType="numeric"
               onChangeText={(text) => {

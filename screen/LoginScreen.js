@@ -37,23 +37,21 @@ const addShadow = (obj) => ({
 const LoginFormContent = ({ idSuffix, navigation }) => {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
-
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
-    // IMPORTANT: Add your actual authentication logic here
+  const [error, setError] = useState(''); // <-- new state for error message
 
-    // 💡 Dummy Logic for Demonstration:
+  const handleLogin = () => {
     if (username === 'test' && password === '123') {
-        console.log('Login Success! Navigating to AdminTabs...');
-        // 🚨 FIX 3: Use the 'navigation' prop directly here.
-        // Navigate to the Stack Screen name you defined in App.js
-        navigation.navigate('AdminTabs'); 
+      console.log('Login Success! Navigating to AdminTabs...');
+      setError(''); // clear error if login success
+      navigation.navigate('AdminTabs');
     } else {
-        console.log('Login Failed:', { username, password });
-        Alert.alert('Login Failed', 'Invalid username or password.'); 
+      console.log('Login Failed:', { username, password });
+      setError('Invalid username or password.'); // <-- show error inline
     }
   };
+
   const handleForgotPassword = () => {
     console.log('Forgot Password clicked.');
     // Navigation logic for Forgot Password screen goes here
@@ -63,11 +61,9 @@ const LoginFormContent = ({ idSuffix, navigation }) => {
   };
   return (
     <View style={styles.formContainer}>
-      {/* Username Input Group */}
+      {/* Username Input */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label} accessibilityLabel="Username label">
-          Username:
-        </Text>
+        <Text style={styles.label}>Username:</Text>
         <TextInput
           style={styles.input}
           value={username}
@@ -75,42 +71,31 @@ const LoginFormContent = ({ idSuffix, navigation }) => {
           placeholder="Enter Username..."
           autoCapitalize="none"
           autoCorrect={false}
-          accessibilityLabel={`Username input ${idSuffix}`}
-          accessibilityHint="Enter your username"
         />
       </View>
 
-      {/* Password Input Group */}
+      {/* Password Input */}
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Password:</Text>
-        <View style={styles.passwordInputContainer}>
-          <TextInput
-            secureTextEntry={!showPassword}
-            style={[styles.input, styles.passwordInput]}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Enter Password..."
-          />
-         
-        </View>
-
-        <TouchableOpacity
-          style={styles.forgotLinkContainer}
-          onPress={handleForgotPassword}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.forgotLinkText}>Forgot Password?</Text>
-        </TouchableOpacity>
+        <TextInput
+          secureTextEntry={!showPassword}
+          style={[styles.input, styles.passwordInput]}
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Enter Password..."
+        />
       </View>
 
+      {/* Error Message */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin} activeOpacity={0.8}>
+      {/* Login Button */}
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
     </View>
   );
 };
-
 const LogoSection = ({ size = 36 }) => {
   return (
     <View style={[styles.logoContainer, { marginBottom: 40 }]}>
@@ -249,7 +234,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#6b7280', // Gray color for icon
   },
-
+  errorText: {
+  color: 'red',
+  fontSize: 13,
+  marginTop: 6,
+  textAlign: 'center',
+  },
   // New Styles for Forgot Password Link
   forgotLinkContainer: {
     alignSelf: 'flex-end',
