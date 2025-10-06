@@ -8,8 +8,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import QRCheckIn from "./QRCheckIn"; // Make sure this path is correct
 
-const API_URL = "http://YOUR_LOCAL_IP:5000/api/attendance"; // ⚠️ replace YOUR_LOCAL_IP with your computer IP
+const API_URL = "http://192.168.1.21:5000/api/attendance"; // replace YOUR_LOCAL_IP
 const PRIMARY_COLOR = "#00A4DF";
 
 export default function QRScannerScreen() {
@@ -22,12 +23,13 @@ export default function QRScannerScreen() {
   }, [permission]);
 
   const handleBarcodeScanned = async ({ data }) => {
+    console.log("Raw QR data:", data); // Debug raw QR data
     try {
-      const parsed = JSON.parse(data); // ✅ expects structured JSON from QR
+      const parsed = JSON.parse(data); // expects structured JSON from QR
       setScannedData(parsed);
       setIsSaving(true);
 
-      // Save attendance to MongoDB backend
+      // Save attendance to backend
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,22 +83,16 @@ export default function QRScannerScreen() {
       )}
 
       {scannedData && !isSaving && (
-        <View style={styles.resultBox}>
-          <Text style={styles.resultTitle}>📋 Scanned Data:</Text>
-          <Text>ID: {scannedData.id}</Text>
-          <Text>Name: {scannedData.name}</Text>
-          <Text>Duty: {scannedData.dutyType}</Text>
-          <Text>Day: {scannedData.day}</Text>
-          <Text>Time: {scannedData.startTime} - {scannedData.endTime}</Text>
-          <Text>Status: {scannedData.status}</Text>
+        <>
+          <QRCheckIn scannedData={scannedData} />
 
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: PRIMARY_COLOR }]}
+            style={[styles.button, { backgroundColor: PRIMARY_COLOR, marginTop: 15, marginHorizontal: 15 }]}
             onPress={() => setScannedData(null)}
           >
             <Text style={{ color: "white" }}>Scan Again</Text>
           </TouchableOpacity>
-        </View>
+        </>
       )}
     </View>
   );
@@ -125,11 +121,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
   },
-  resultBox: {
-    backgroundColor: "white",
-    padding: 15,
-  },
-  resultTitle: { fontWeight: "bold", marginBottom: 5 },
   button: {
     marginTop: 10,
     backgroundColor: "#333",

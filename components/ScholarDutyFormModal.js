@@ -79,7 +79,16 @@ const ScholarDutyFormModal = ({
     }
   }
 
-  const dutyData = { name: studentName, id: studentId, year, course, duty: dutyType, schedules };
+  const dutyData = { 
+  name: studentName,
+  id: studentId,
+  year,
+  course,
+  duty: dutyType,
+  schedules,
+  status: "Active" // ✅ default status
+};
+
   onSave(dutyData, isEditing);
 
   // ✅ Close the form modal, then show success modal

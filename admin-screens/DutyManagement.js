@@ -7,9 +7,9 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import ScholarDutyCard from "../components/ScholarDutyCard";
 import ScholarDutyFormModal from "../components/ScholarDutyFormModal";
 import ScholarDutyViewModal from "../components/ScholarDutyViewModal";
+import DutyTable from "../components/DutyTable";
 
 const PRIMARY_COLOR = "#00A4DF";
 
@@ -62,23 +62,27 @@ export default function DutyManagement() {
       />
 
       {/* Duty List */}
-      <ScrollView>
-        <Text style={styles.sectionTitle}>
-          Assigned Duties ({filteredDuties.length})
-        </Text>
+     <Text style={styles.sectionTitle}>
+  Assigned Duties ({filteredDuties.length})
+</Text>
 
-        {filteredDuties.map((d, i) => (
-          <ScholarDutyCard
-            key={i}
-            duty={d}
-            onEdit={() => {
-              setEditIndex(i);
-              setModalVisible(true);
-            }}
-            onView={() => setViewDuty({ ...d, index: i })}
-          />
-        ))}
-      </ScrollView>
+<DutyTable
+  duties={filteredDuties}
+  onEdit={(index) => {
+    setEditIndex(index);
+    setModalVisible(true);
+  }}
+  onView={(duty) => setViewDuty(duty)}
+  onToggleStatus={(index) => {
+    const updated = [...duties];
+    const currentStatus = updated[index].status;
+    updated[index].status =
+      currentStatus === "Active" ? "Deactivated" : "Active";
+    setDuties(updated);
+  }}
+/>
+
+
 
       {/* Form Modal */}
       <ScholarDutyFormModal

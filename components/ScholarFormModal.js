@@ -12,8 +12,8 @@ import {
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import AntDesign from "@expo/vector-icons/AntDesign";
-import Ionicons from "@expo/vector-icons/Ionicons"; 
-import ConfettiCannon from "react-native-confetti-cannon"; 
+import Ionicons from "@expo/vector-icons/Ionicons";
+import ConfettiCannon from "react-native-confetti-cannon";
 
 const ScholarFormModal = ({
   visible,
@@ -26,6 +26,7 @@ const ScholarFormModal = ({
 }) => {
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [email, setEmail] = useState(""); // ✅ Added email state
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [year, setYear] = useState(null);
@@ -44,32 +45,52 @@ const ScholarFormModal = ({
     if (visible) {
       setStudentName(initialData?.name || "");
       setStudentId(initialData?.id || "");
+      setEmail(initialData?.email || ""); // ✅ Prefill email if editing
       setPassword(initialData?.password || "");
       setYear(initialData?.year || null);
       setCourse(initialData?.course || null);
       setDutyType(initialData?.duty || null);
-    }else if (visible && !initialData) {
-    // Clear form if it's a fresh new form (not editing)
-    setStudentName("");
-    setStudentId("");
-    setPassword("");
-    setYear(null);
-    setCourse(null);
-    setDutyType(null);
-  }
+    } else if (visible && !initialData) {
+      setStudentName("");
+      setStudentId("");
+      setEmail("");
+      setPassword("");
+      setYear(null);
+      setCourse(null);
+      setDutyType(null);
+    }
   }, [visible, initialData]);
 
   const isEditing = !!initialData;
 
   const handleSave = () => {
-    if (!studentName || !studentId || !password || !year || !course || !dutyType) {
-      Alert.alert("Missing Info", "Please fill in all fields including password.");
+    if (!studentName || !studentId || !email || !password || !year || !course || !dutyType) {
+      Alert.alert("Missing Info", "Please fill in all fields including email and password.");
       return;
     }
-
+      // ✅ Email must end with "au@phinmaed.com"
+        const emailRegex = /^[a-zA-Z0-9._%+-]+\.au@phinmaed\.com$/;
+        if (!emailRegex.test(email)) {
+          Alert.alert(
+            "Invalid Email",
+            "Email must be in the format: firstname.lastname.au@phinmaed.com"
+          );
+          return;
+        }
+    // ✅ Password must be at least 8 chars, with 1 uppercase, 1 lowercase, 1 number, and 1 special character
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passwordRegex.test(password)) {
+    Alert.alert(
+      "Weak Password",
+      "Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character."
+    );
+    return;
+  }
     const scholarData = {
       name: studentName,
       id: studentId,
+      email, // ✅ include email
       password,
       year,
       course,
@@ -77,8 +98,8 @@ const ScholarFormModal = ({
     };
 
     onSave(scholarData, isEditing);
-    onClose(); 
-    setSuccessModalVisible(true); // ✅ show success modal
+    onClose();
+    setSuccessModalVisible(true);
   };
 
   const closeSuccessModal = () => setSuccessModalVisible(false);
@@ -117,6 +138,18 @@ const ScholarFormModal = ({
                   setStudentId(formatted);
                 }}
                 maxLength={14}
+                style={styles.input}
+              />
+
+              {/* ✅ Email Field */}
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                placeholder="juan.delacruz.au@phinmaed.com"
+                placeholderTextColor="#888"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
                 style={styles.input}
               />
 
@@ -272,7 +305,6 @@ const ScholarFormModal = ({
     </>
   );
 };
-
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,

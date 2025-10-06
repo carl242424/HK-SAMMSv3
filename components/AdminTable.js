@@ -14,7 +14,8 @@ const AdminTable = ({ admins, onDisable, onReactivate }) => {
   const filteredAdmins = admins.filter(
     (admin) =>
       admin.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      admin.id.toLowerCase().includes(searchText.toLowerCase())
+      admin.id.toLowerCase().includes(searchText.toLowerCase()) ||
+      (admin.email && admin.email.toLowerCase().includes(searchText.toLowerCase()))
   );
 
   return (
@@ -22,7 +23,7 @@ const AdminTable = ({ admins, onDisable, onReactivate }) => {
       {/* Search Bar */}
       <TextInput
         style={styles.searchBar}
-        placeholder="Search by name or Employee ID..."
+        placeholder="Search by name, Employee ID, or email..."
         value={searchText}
         onChangeText={setSearchText}
       />
@@ -33,6 +34,7 @@ const AdminTable = ({ admins, onDisable, onReactivate }) => {
         <View style={[styles.row, styles.header]}>
           <Text style={styles.cell}>Admin Name</Text>
           <Text style={styles.cell}>Employee ID</Text>
+          <Text style={styles.cell}>Email</Text>
           <Text style={styles.cell}>Status</Text>
           <Text style={styles.cell}>Action</Text>
         </View>
@@ -43,6 +45,7 @@ const AdminTable = ({ admins, onDisable, onReactivate }) => {
             <View key={index} style={styles.row}>
               <Text style={styles.cell}>{admin.name}</Text>
               <Text style={styles.cell}>{admin.id}</Text>
+              <Text style={styles.cell}>{admin.email || "—"}</Text>
               <Text style={styles.cell}>{admin.status}</Text>
 
               <View style={styles.actionWrapper}>

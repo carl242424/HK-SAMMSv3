@@ -1,18 +1,17 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
 
-const ScholarTable = ({ scholars = [], onReactivate, onEdit, onView, onDeactivate }) => {
+const ScholarTable = ({ scholars = [], onEdit, onView, onToggleStatus }) => {
   const { width: screenWidth } = useWindowDimensions();
 
-  // Base column setup
-  const columnWidth = 120; // each normal column min width
-  const actionWidth = 200; // actions column fixed
-  const totalColumns = 8; // student, id, year, course, duty, remaining hrs, duty status, status
-  const tableMinWidth = totalColumns * columnWidth + actionWidth; // e.g. 1160px
+  const columnWidth = 120;
+  const actionWidth = 200;
+  const totalColumns = 8;
+  const tableMinWidth = totalColumns * columnWidth + actionWidth;
 
   return (
     <ScrollView
-      horizontal={screenWidth < tableMinWidth} // scroll only if screen is smaller
+      horizontal={screenWidth < tableMinWidth}
       style={{ width: "100%" }}
       contentContainerStyle={{
         minWidth: screenWidth < tableMinWidth ? tableMinWidth : "100%",
@@ -20,10 +19,11 @@ const ScholarTable = ({ scholars = [], onReactivate, onEdit, onView, onDeactivat
       }}
     >
       <View style={[styles.tableContainer, { width: "100%" }]}>
-        {/* Header Row */}
+        {/* Header */}
         <View style={[styles.row, styles.headerRow]}>
           <Text style={[styles.cell, styles.header]}>Student</Text>
           <Text style={[styles.cell, styles.header]}>Student ID</Text>
+          <Text style={[styles.cell, styles.header]}>Email</Text>
           <Text style={[styles.cell, styles.header]}>Year</Text>
           <Text style={[styles.cell, styles.header]}>Course</Text>
           <Text style={[styles.cell, styles.header]}>Duty</Text>
@@ -38,6 +38,7 @@ const ScholarTable = ({ scholars = [], onReactivate, onEdit, onView, onDeactivat
           <View key={index} style={styles.row}>
             <Text style={styles.cell}>{s.name}</Text>
             <Text style={styles.cell}>{s.id}</Text>
+            <Text style={styles.cell}>{s.email}</Text>
             <Text style={styles.cell}>{s.year}</Text>
             <Text style={styles.cell}>{s.course}</Text>
             <Text style={styles.cell}>{s.duty}</Text>
@@ -45,29 +46,45 @@ const ScholarTable = ({ scholars = [], onReactivate, onEdit, onView, onDeactivat
             <Text style={styles.cell}>
               {s.remainingHours === 0 ? "✅ Completed" : "⏳ Not yet"}
             </Text>
-            <Text style={styles.cell}>
-              {s.status === "deactivated" ? "Deactivated" : "Active"}
+            <Text
+              style={[
+                styles.cell,
+                { color: s.status === "Deactivated" ? "#d9534f" : "green" },
+              ]}
+            >
+              {s.status}
             </Text>
 
             {/* Actions */}
             <View style={styles.actionsCell}>
-              {s.status === "deactivated" ? (
-                <TouchableOpacity style={styles.reactivateBtn} onPress={() => onReactivate(index)}>
-                  <Text style={styles.btnText}>Reactivate</Text>
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <TouchableOpacity style={styles.viewBtn} onPress={() => onView(s)}>
-                    <Text style={styles.btnText}>View</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.editBtn} onPress={() => onEdit(index)}>
-                    <Text style={styles.btnText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.deactivateBtn} onPress={() => onDeactivate(index)}>
-                    <Text style={styles.btnText}>Deactivate</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+              <TouchableOpacity
+                style={styles.viewBtn}
+                onPress={() => onView(s)}
+              >
+                <Text style={styles.btnText}>View</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => onEdit(index)}
+              >
+                <Text style={styles.btnText}>Edit</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.statusBtn,
+                  {
+                    backgroundColor:
+                      s.status === "Active" ? "#d9534f" : "green",
+                  },
+                ]}
+                onPress={() => onToggleStatus(index)}
+              >
+                <Text style={styles.btnText}>
+                  {s.status === "Active" ? "Deactivate" : "Re-Activate"}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         ))}
@@ -100,7 +117,7 @@ const styles = StyleSheet.create({
   actionsCell: {
     width: 200,
     flexDirection: "row",
-    flexWrap: "wrap", // wrap buttons if narrow
+    flexWrap: "wrap",
   },
   header: {
     fontWeight: "bold",
@@ -125,14 +142,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: 6,
   },
-  deactivateBtn: {
-    backgroundColor: "#d9534f",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-  },
-  reactivateBtn: {
-    backgroundColor: "green",
+  statusBtn: {
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 4,
