@@ -78,12 +78,7 @@ const ScholarTable = ({ scholars = [], onEdit, onView, onToggleStatus }) => {
 
             {/* Actions */}
             <View style={styles.actionsCell}>
-              <TouchableOpacity
-                style={styles.viewBtn}
-                onPress={() => onView(s)}
-              >
-                <Text style={styles.btnText}>View</Text>
-              </TouchableOpacity>
+             
 
               <TouchableOpacity
                 style={styles.editBtn}
