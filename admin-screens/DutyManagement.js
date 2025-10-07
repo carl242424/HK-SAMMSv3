@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
 import {
   View,
   Text,
@@ -172,3 +173,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 18, fontWeight: "600", marginVertical: 8 },
 });
+
+
+
+
+

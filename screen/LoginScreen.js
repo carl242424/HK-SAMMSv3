@@ -1,3 +1,4 @@
+  import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -12,6 +13,7 @@ import {
   Alert,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const isDesktop = screenWidth >= 768;
@@ -34,6 +36,7 @@ const addShadow = (obj = {}) => ({
 
 
 const LoginFormContent = ({ navigation }) => {
+  
   const [username, setUsername] = useState("");
 
    const [password, setPassword] = useState("");
@@ -67,17 +70,52 @@ const LoginFormContent = ({ navigation }) => {
     }
     return () => clearInterval(countdown);
   }, [showCodeModal, timer]);
-  
-  // Login function
-const handleLogin = () => {
-  if (username === "test" && loginPassword === "123") {
-    setError("");
-    navigation.navigate("AdminTabs");
-  } else if (username === "Checker" && loginPassword === "123") {
-    setError("");
-    navigation.navigate("AttendanceCheckerTabs");
-  } else {
-    setError("Invalid username or password.");
+  //login
+
+
+// inside LoginFormContent
+
+
+const handleLogin = async () => {
+  if (!username || !loginPassword) {
+    setError("Please enter username and password.");
+    return;
+  }
+
+  try {
+    const response = await fetch("http://192.168.86.139:8000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password: loginPassword }),
+    });
+
+    const data = await response.json();
+    console.log("Raw backend response:", data);
+    console.log("User role:", data.role);
+
+    if (response.ok && data.role) {
+      await AsyncStorage.setItem("token", data.token);
+      await AsyncStorage.setItem("role", data.role);
+
+      if (data.role === "admin") {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "AdminTabs" }],
+        });
+      } else if (data.role === "checker") {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "AttendanceCheckerTabs" }],
+        });
+      } else {
+        Alert.alert("Error", "Unknown role");
+      }
+    } else {
+      setError(data.message || "Invalid credentials.");
+    }
+  } catch (err) {
+    console.error("Login fetch error:", err);
+    Alert.alert("Error", "Unable to connect to server.");
   }
 };
 
@@ -88,54 +126,106 @@ const handleLogin = () => {
     setShowEmailModal(true);
   };
 
-  const handleContinueEmail = () => {
+  const handleContinueEmail = async () => {
   if (!email) {
-    const msg = "Please enter your email.";
+    if (Platform.OS === "web") setEmailError("Please enter your email.");
+    else Alert.alert("Error", "Please enter your email.");
+    return;
+  }
+
+  const emailPattern = /^[a-zA-Z0-9._%+-]+\.au@phinmaed\.com$/i;
+  if (!emailPattern.test(email)) {
+    const msg = "Invalid PHINMAED email format.";
     if (Platform.OS === "web") setEmailError(msg);
     else Alert.alert("Error", msg);
     return;
   }
 
-  // ✅ Allow only emails ending with .au@phinmaed.com
-  const emailPattern = /^[a-zA-Z0-9._%+-]+\.au@phinmaed\.com$/i;
-
-  if (!emailPattern.test(email)) {
-    const msg =
-      "Please enter a valid PHINMAED email ending with .au@phinmaed.com (e.g. juan.delacruz.au@phinmaed.com).";
-    if (Platform.OS === "web") setEmailError(msg);
-    else Alert.alert("Invalid Email", msg);
-    return;
-  }
-
-  // ✅ If valid
   setEmailError("");
-  setShowEmailModal(false);
-  setShowCodeModal(true);
-  setTimer(60);
+
+  try {
+    const response = await fetch("http://192.168.86.139:8000/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.toLowerCase() }),
+    });
+
+    const data = await response.json();
+
+    if (response.status === 400) {
+      setShowEmailModal(false);
+      setShowCodeModal(true);
+      setTimer(60);
+      Alert.alert("Success", data.message);
+    } else {
+      Alert.alert("Error", data.message);
+    }
+  } catch (err) {
+    console.error(err);
+    Alert.alert("Error", "Unable to connect to server.");
+  }
 };
 
 
-  const handleVerifyCode = () => {
-    if (code.length !== 4) {
-      Alert.alert("Error", "Please enter a valid 4-digit code.");
-      return;
-    }
-    setShowCodeModal(false);
-    setShowResetModal(true);
-  };
+const handleVerifyCode = async () => {
+  if (code.length !== 4) {
+    Alert.alert("Error", "Please enter a valid 4-digit code.");
+    return;
+  }
 
-  const handleResetPassword = () => {
-    if (!passwordNew || !passwordConfirm) {
-      Alert.alert("Error", "Please fill in all fields.");
-      return;
+  try {
+    const response = await fetch("http://192.168.86.139:8000/api/auth/verify-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.toLowerCase(), code }),
+    });
+    
+    const data = await response.json();
+
+    if (response.status === 200) {
+      setShowCodeModal(false);
+      setShowResetModal(true);
+    } else {
+      Alert.alert("Error", data.message);
     }
-    if (passwordNew !== passwordConfirm) {
-      Alert.alert("Error", "Passwords do not match.");
-      return;
+  } catch (err) {
+    console.error(err);
+    Alert.alert("Error", "Unable to connect to server.");
+  }
+};
+
+
+  const handleResetPassword = async () => {
+  if (!passwordNew || !passwordConfirm) {
+    Alert.alert("Error", "Please fill in all fields.");
+    return;
+  }
+  if (passwordNew !== passwordConfirm) {
+    Alert.alert("Error", "Passwords do not match.");
+    return;
+  }
+
+  try {
+    const response = await fetch("http://192.168.86.139:8000/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // <-- send `newPassword`, because backend expects that name
+      body: JSON.stringify({ email: email.toLowerCase(), newPassword: passwordNew }),
+    });
+
+    const data = await response.json();
+
+    if (response.status === 200) {
+      Alert.alert("Success", "Password successfully reset!");
+      setShowResetModal(false);
+    } else {
+      Alert.alert("Error", data.message || "Reset failed");
     }
-    Alert.alert("Success", "Password successfully reset!");
-    setShowResetModal(false);
-  };
+  } catch (err) {
+    console.error("Reset password fetch error:", err);
+    Alert.alert("Error", "Unable to connect to server.");
+  }
+};
 
   return (
     <View style={styles.formContainer}>
@@ -374,7 +464,7 @@ const handleLogin = () => {
       )}
 
       {/* Reset Button */}
-      <TouchableOpacity
+     <TouchableOpacity
         style={styles.modalButton}
         onPress={() => {
           const passwordRegex =
@@ -392,12 +482,13 @@ const handleLogin = () => {
             return;
           }
 
-          Alert.alert("Success", "Password successfully reset!");
-          setShowResetModal(false);
+          // ✅ CALL the backend reset API
+          handleResetPassword();
         }}
       >
         <Text style={styles.modalButtonText}>Reset Password</Text>
       </TouchableOpacity>
+
 
       <TouchableOpacity onPress={() => setShowResetModal(false)}>
         <Text style={styles.modalCancel}>Cancel</Text>
