@@ -15,6 +15,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
   const [adminName, setAdminName] = useState("");
   const [employeeId, setEmployeeId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -22,6 +23,7 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
     if (visible) {
       setAdminName(initialData?.name || "");
       setEmployeeId(initialData?.id || "");
+      setEmail(initialData?.email || "");
       setPassword(initialData?.password || "");
     }
   }, [visible, initialData]);
@@ -29,14 +31,36 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
   const isEditing = !!initialData;
 
   const handleSave = () => {
-    if (!adminName || !employeeId || !password) {
+    if (!adminName || !employeeId || !email || !password) {
       Alert.alert("Missing Info", "Please fill in all fields.");
       return;
     }
 
+    // ✅ Email must end with "au@phinmaed.com"
+    const emailRegex = /^[a-zA-Z0-9._%+-]+\.au@phinmaed\.com$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert(
+        "Invalid Email",
+        "Email must be in the format: firstname.lastname.au@phinmaed.com"
+      );
+      return;
+    }
+
+    // ✅ Password must be at least 8 chars, with 1 uppercase, 1 lowercase, 1 number, and 1 special character
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passwordRegex.test(password)) {
+    Alert.alert(
+      "Weak Password",
+      "Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character."
+    );
+    return;
+  }
+  
     const adminData = {
       name: adminName,
-      id: employeeId, // keep `id` key for compatibility with table
+      id: employeeId,
+      email,
       password,
       status: "Active",
     };
@@ -70,6 +94,17 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
               value={employeeId}
               onChangeText={setEmployeeId}
               style={styles.input}
+            />
+
+            {/* Email */}
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              placeholder="juan.delacruz.au@phinmaed.com"
+              value={email}
+              onChangeText={setEmail}
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
 
             {/* Password */}

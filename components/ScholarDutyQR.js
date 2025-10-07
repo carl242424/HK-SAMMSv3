@@ -1,19 +1,25 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  useWindowDimensions,
+  Modal,
+} from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { Ionicons } from "@expo/vector-icons";
+import * as Crypto from "expo-crypto";
 
 export default function ScholarDutyQR({ duty, onRemove }) {
   const [status, setStatus] = useState("Active");
-  const { width } = useWindowDimensions(); // ✅ detect screen size
+  const [qrCodeValue, setQrCodeValue] = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
+  const { width } = useWindowDimensions();
 
   // ✅ Auto-expire for Attendance Checker
   useEffect(() => {
-    if (
-      duty.duty === "Attendance Checker" &&
-      duty.schedules &&
-      duty.schedules.length > 0
-    ) {
+    if (duty.duty === "Attendance Checker" && duty.schedules?.length > 0) {
       const checkExpiry = () => {
         const now = new Date();
         let expired = false;
@@ -41,47 +47,106 @@ export default function ScholarDutyQR({ duty, onRemove }) {
     }
   }, [duty]);
 
-  // ✅ QR data
-  const qrData = JSON.stringify({
-    id: duty.id,
-    name: duty.name,
-    year: duty.year,
-    course: duty.course,
-    dutyType: duty.duty,
-    schedules: duty.schedules,
-    status,
-  });
+  // ✅ Generate unique hash-based QR content
+  const generateUniqueCode = async () => {
+    const rawData = `${duty.id}-${duty.name}-${duty.duty}-${Date.now()}`;
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      rawData
+    );
+    return hash.substring(0, 12).toUpperCase();
+  };
 
-  const isSmallScreen = width < 400; // breakpoint for mobile
+  useEffect(() => {
+    (async () => {
+      const code = await generateUniqueCode();
+
+      // Embed both the code and all duty details in the QR content
+      const qrPayload = {
+        qrCode: code,
+        id: duty.id,
+        name: duty.name,
+        year: duty.year,
+        course: duty.course,
+        dutyType: duty.duty,
+        schedules: duty.schedules,
+        status,
+        generatedAt: new Date().toISOString(),
+      };
+
+      setQrCodeValue(JSON.stringify(qrPayload));
+    })();
+  }, [duty, status]);
+
+  const isSmallScreen = width < 400;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.qrContainer}>
-        <QRCode value={qrData} size={120} />
-      </View>
+    <>
+      {/* Main Card */}
+      <View style={styles.card}>
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <View style={styles.qrContainer}>
+            <QRCode value={qrCodeValue || "Generating..."} size={120} />
+          </View>
+        </TouchableOpacity>
 
-      <View style={styles.details}>
-        {/* Duty Info */}
-        <View
-          style={[
-            styles.headerRow,
-            isSmallScreen && { flexDirection: "column", alignItems: "flex-start" },
-          ]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title}>{duty.duty}</Text>
-            <Text style={styles.subtext}>
-              {duty.name} ({duty.id})
-            </Text>
-            <Text>
-              {duty.year} • {duty.course}
-            </Text>
+        <View style={styles.details}>
+          <View
+            style={[
+              styles.headerRow,
+              isSmallScreen && {
+                flexDirection: "column",
+                alignItems: "flex-start",
+              },
+            ]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>{duty.duty}</Text>
+              <Text style={styles.subtext}>
+                {duty.name} ({duty.id})
+              </Text>
+              <Text>
+                {duty.year} • {duty.course}
+              </Text>
+            </View>
+
+            {!isSmallScreen && (
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => onRemove && onRemove(duty.id)}
+              >
+                <Ionicons name="trash-outline" size={18} color="white" />
+                <Text style={styles.removeText}>Remove</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Remove button for larger screens */}
-          {!isSmallScreen && (
+          <View style={styles.scheduleContainer}>
+            <Text style={styles.scheduleHeader}>Schedules:</Text>
+            {duty.schedules.map((s, i) => (
+              <View key={i} style={styles.scheduleItem}>
+                <Text>
+                  {s.day} — {s.startTime} - {s.endTime}
+                </Text>
+                {s.room ? (
+                  <Text style={styles.roomText}>Room: {s.room}</Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
+
+          <Text
+            style={[
+              styles.status,
+              { color: status === "Active" ? "green" : "red" },
+            ]}
+          >
+            Status: {status}
+          </Text>
+
+          {isSmallScreen && (
             <TouchableOpacity
-              style={styles.removeButton}
+              style={[styles.removeButton, { alignSelf: "flex-start", marginTop: 8 }]}
               onPress={() => onRemove && onRemove(duty.id)}
             >
               <Ionicons name="trash-outline" size={18} color="white" />
@@ -89,44 +154,28 @@ export default function ScholarDutyQR({ duty, onRemove }) {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Schedules */}
-        <View style={styles.scheduleContainer}>
-          <Text style={styles.scheduleHeader}>Schedules:</Text>
-          {duty.schedules.map((s, i) => (
-            <View key={i} style={styles.scheduleItem}>
-              <Text>
-                {s.day} — {s.startTime} - {s.endTime}
-              </Text>
-              {s.room ? (
-                <Text style={styles.roomText}>Room: {s.room}</Text>
-              ) : null}
-            </View>
-          ))}
-        </View>
-
-        {/* Status */}
-        <Text
-          style={[
-            styles.status,
-            { color: status === "Active" ? "green" : "red" },
-          ]}
-        >
-          Status: {status}
-        </Text>
-
-        {/* Remove button for mobile (below Status) */}
-        {isSmallScreen && (
-          <TouchableOpacity
-            style={[styles.removeButton, { alignSelf: "flex-start", marginTop: 8 }]}
-            onPress={() => onRemove && onRemove(duty.id)}
-          >
-            <Ionicons name="trash-outline" size={18} color="white" />
-            <Text style={styles.removeText}>Remove</Text>
-          </TouchableOpacity>
-        )}
       </View>
-    </View>
+
+      {/* Modal for QR Popup */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContent}>
+            <QRCode value={qrCodeValue || "Generating..."} size={250} />
+            <TouchableOpacity
+              onPress={() => setModalVisible(false)}
+              style={styles.modalCloseButton}
+            >
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -172,5 +221,30 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
     marginLeft: 5,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: 30,
+    borderRadius: 12,
+    alignItems: "center",
+    elevation: 5,
+  },
+  modalCloseButton: {
+    marginTop: 20,
+    backgroundColor: "#2196F3",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  modalCloseText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });

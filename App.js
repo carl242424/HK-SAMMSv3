@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // AdminBottomTabNavigator is in the 'navigations' folder
 import AdminBottomTabNavigator from './navigations/AdminBottomTabNavigator.js'; 
+import AttendanceCheckerBottomNavigator from './navigations/AttendanceCheckerBottomNavigator.js'; 
 
 // LoginScreen is in the 'screen' folder
 import LoginScreen from './screen/LoginScreen'; 
@@ -29,7 +30,7 @@ export default function App() {
         <Stack.Screen name="AdminTabs" component={AdminBottomTabNavigator} />
         
         {/* The 'HomeTabs' is likely redundant, but kept here if it's referenced by non-admin flow */}
-        <Stack.Screen name="HomeTabs" component={AdminBottomTabNavigator} />
+        <Stack.Screen name="AttendanceCheckerTabs" component={AttendanceCheckerBottomNavigator} />
         
       </Stack.Navigator>
     </NavigationContainer>
