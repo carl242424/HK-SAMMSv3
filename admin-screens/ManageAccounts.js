@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState , useEffect} from "react";
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert
 } from "react-native";
@@ -27,20 +27,46 @@ export default function ManageAccounts() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [viewScholar, setViewScholar] = useState(null);
+   
+  useEffect(() => {
+    fetchScholars();
+  }, []);
+
+  const fetchScholars = async () => {
+    try {
+      const response = await fetch("http://192.168.86.139:8000/api/scholars");
+      const data = await response.json();
+      setScholars(data);
+    } catch (err) {
+      Alert.alert("Error", "Unable to fetch scholars");
+    }
+  };
 
   const updateForm = (field, value) =>
     setForm(prevForm => ({ ...prevForm, [field]: value }));
 
-  const saveScholar = (data, isEditing) => {
+ const saveScholar = async (data, isEditing) => {
+  try {
     if (isEditing && editIndex !== null) {
-      const updated = [...scholars];
-      updated[editIndex] = { ...data };
-      setScholars(updated);
+      await fetch(`http://192.168.86.139:8000/api/scholars/${scholars[editIndex]._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
     } else {
-      setScholars([...scholars, { ...data, remainingHours: 70, status: "Active" }]);
+      await fetch("http://192.168.86.139:8000/api/scholars", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
     }
     resetForm();
-  };
+    fetchScholars(); // 🔄 Refresh the list
+  } catch (err) {
+    Alert.alert("Error", "Failed to save scholar");
+  }
+};
+
 
   const resetForm = () => {
     setForm({ name: "", id: "", year: YEARS[0], course: COURSES[0], duty: DUTY_TYPES[0] });
@@ -49,14 +75,24 @@ export default function ManageAccounts() {
   };
 
   // 🔄 Toggle between Active <-> Deactivated
-  const toggleScholarStatus = index => {
-    setScholars(prev => {
-      const updated = [...prev];
-      const currentStatus = updated[index].status;
-      updated[index].status = currentStatus === "Active" ? "Deactivated" : "Active";
-      return updated;
+ const toggleScholarStatus = async (index) => {
+  try {
+    const scholar = scholars[index];
+    const response = await fetch(`http://192.168.86.139:8000/api/scholars/${scholar._id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: scholar.status === "Active" ? "Deactivated" : "Active" }),
     });
-  };
+    const updated = await response.json();
+    const updatedList = [...scholars];
+    updatedList[index] = updated;
+    setScholars(updatedList);
+  } catch (err) {
+    Alert.alert("Error", "Failed to update status");
+  }
+};
+
+
 
   const filteredScholars = scholars.filter(s =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
