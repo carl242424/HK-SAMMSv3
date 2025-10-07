@@ -81,7 +81,20 @@ const handleLogin = async () => {
     setError("Please enter username and password.");
     return;
   }
-
+ // ✅ Temporary login (bypass backend)
+  if (
+    username.trim().toLowerCase() === "temporary.au@phinmaed.com" &&
+    loginPassword === "Test123@@"
+  ) {
+    Alert.alert("Login Successful", "Welcome, Temporary User!");
+    await AsyncStorage.setItem("token", "temporary-token");
+    await AsyncStorage.setItem("role", "admin"); // or "checker" depending on your test
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "AdminTabs" }], // adjust if needed
+    });
+    return;
+  }
   try {
     const response = await fetch("http://192.168.86.139:8000/api/auth/login", {
       method: "POST",

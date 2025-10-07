@@ -30,6 +30,8 @@ const ScholarTable = ({ scholars = [], onEdit, onView, onToggleStatus }) => {
           <Text style={[styles.cell, styles.header]}>Remaining Hours</Text>
           <Text style={[styles.cell, styles.header]}>Duty Status</Text>
           <Text style={[styles.cell, styles.header]}>Status</Text>
+          <Text style={[styles.cell, styles.header]}>Created</Text>
+          <Text style={[styles.cell, styles.header]}>Last Updated</Text>
           <Text style={[styles.actionsCellHeader, styles.header]}>Actions</Text>
         </View>
 
@@ -54,6 +56,25 @@ const ScholarTable = ({ scholars = [], onEdit, onView, onToggleStatus }) => {
             >
               {s.status}
             </Text>
+                <Text style={styles.cell}>
+  {s.createdAt
+    ? new Date(s.createdAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "—"}
+</Text>
+
+<Text style={styles.cell}>
+  {s.updatedAt
+    ? new Date(s.updatedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "—"}
+</Text>
 
             {/* Actions */}
             <View style={styles.actionsCell}>
