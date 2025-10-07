@@ -38,19 +38,27 @@ const LoginFormContent = ({ idSuffix, navigation }) => {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = useState(false);
+const handleLogin = async () => {
+  try {
+    const response = await fetch('http://localhost:8000/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
 
-  const [error, setError] = useState(''); // <-- new state for error message
+    const data = await response.json();
 
-  const handleLogin = () => {
-    if (username === 'test' && password === '123') {
-      console.log('Login Success! Navigating to AdminTabs...');
-      setError(''); // clear error if login success
+    if (response.ok) {
+      Alert.alert('Success', 'Login successful!');
       navigation.navigate('AdminTabs');
     } else {
-      console.log('Login Failed:', { username, password });
-      setError('Invalid username or password.'); // <-- show error inline
+      Alert.alert('Login Failed', data.message);
     }
-  };
+  } catch (error) {
+    console.error(error);
+    Alert.alert('Error', 'Unable to connect to the server.');
+  }
+};
 
   const handleForgotPassword = () => {
     console.log('Forgot Password clicked.');
