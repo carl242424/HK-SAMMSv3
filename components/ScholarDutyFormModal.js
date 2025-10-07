@@ -69,32 +69,48 @@ const ScholarDutyFormModal = ({
     );
 
   const handleSave = () => {
-  if (!isFormComplete) return Alert.alert("Missing Info", "Please fill in all fields.");
+  if (!isFormComplete) {
+    return Alert.alert("Missing Info", "Please fill in all fields.");
+  }
 
   for (let s of schedules) {
     const startIndex = TIMES.indexOf(s.startTime);
     const endIndex = TIMES.indexOf(s.endTime);
+
+    // Validate proper time selection
+    if (startIndex === -1 || endIndex === -1) {
+      return Alert.alert("Invalid Selection", "Please select valid start and end times.");
+    }
+
+    // Validate end time is later than start time
     if (startIndex >= endIndex) {
       return Alert.alert("Invalid Time", "End time must be later than Start time.");
     }
+
+    // Validate minimum 1 hour (2 half-hour intervals)
+    const diff = endIndex - startIndex;
+    if (diff < 2) {
+      return Alert.alert("Invalid Duty Duration", "1hr or above allowed duty hours.");
+    }
   }
 
-  const dutyData = { 
-  name: studentName,
-  id: studentId,
-  year,
-  course,
-  duty: dutyType,
-  schedules,
-  status: "Active" // ✅ default status
-};
+  const dutyData = {
+    name: studentName,
+    id: studentId,
+    year,
+    course,
+    duty: dutyType,
+    schedules,
+    status: "Active", // ✅ default status
+  };
 
   onSave(dutyData, isEditing);
 
-  // ✅ Close the form modal, then show success modal
+  // ✅ Close form and show success modal
   onClose();
   setSuccessModalVisible(true);
 };
+
 
  const closeSuccessModal = () => {
   setSuccessModalVisible(false);
@@ -285,7 +301,7 @@ const ScholarDutyFormModal = ({
       </View>
     </Modal>
      {/* 🎉 Success Modal */}
-    {/* 🎉 Success Modal */}
+  
 <Modal visible={successModalVisible} transparent animationType="fade">
   <View style={styles.successOverlay}>
     {/* Confetti should be at overlay level, not inside box */}

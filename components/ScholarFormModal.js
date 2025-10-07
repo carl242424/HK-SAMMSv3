@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Modal,
   ScrollView,
-  Alert,
   Platform,
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
@@ -26,71 +25,66 @@ const ScholarFormModal = ({
 }) => {
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
-  const [email, setEmail] = useState(""); // ✅ Added email state
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [year, setYear] = useState(null);
   const [course, setCourse] = useState(null);
   const [dutyType, setDutyType] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [isFocus, setIsFocus] = useState({
     year: false,
     course: false,
     duty: false,
   });
 
-  // ✅ Success modal state
+  const [errors, setErrors] = useState({});
   const [successModalVisible, setSuccessModalVisible] = useState(false);
+
+  const isEditing = !!initialData;
 
   useEffect(() => {
     if (visible) {
       setStudentName(initialData?.name || "");
       setStudentId(initialData?.id || "");
-      setEmail(initialData?.email || ""); // ✅ Prefill email if editing
+      setEmail(initialData?.email || "");
       setPassword(initialData?.password || "");
       setYear(initialData?.year || null);
       setCourse(initialData?.course || null);
       setDutyType(initialData?.duty || null);
-    } else if (visible && !initialData) {
-      setStudentName("");
-      setStudentId("");
-      setEmail("");
-      setPassword("");
-      setYear(null);
-      setCourse(null);
-      setDutyType(null);
+      setErrors({});
     }
   }, [visible, initialData]);
 
-  const isEditing = !!initialData;
+  const validate = () => {
+    const newErrors = {};
+
+    if (!studentName || !studentId || !email || !password || !year || !course || !dutyType) {
+      newErrors.general = "Please fill in all fields.";
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+\.au@phinmaed\.com$/;
+    if (!emailRegex.test(email)) {
+      newErrors.email = "Only emails ending with 'au@phinmaed.com' are allowed.";
+    }
+
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      newErrors.password =
+        "Password must be at least 8 characters, include 1 uppercase, 1 lowercase, 1 number, and 1 special character.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSave = () => {
-    if (!studentName || !studentId || !email || !password || !year || !course || !dutyType) {
-      Alert.alert("Missing Info", "Please fill in all fields including email and password.");
-      return;
-    }
-      // ✅ Email must end with "au@phinmaed.com"
-        const emailRegex = /^[a-zA-Z0-9._%+-]+\.au@phinmaed\.com$/;
-        if (!emailRegex.test(email)) {
-          Alert.alert(
-            "Invalid Email",
-            "Email must be in the format: firstname.lastname.au@phinmaed.com"
-          );
-          return;
-        }
-    // ✅ Password must be at least 8 chars, with 1 uppercase, 1 lowercase, 1 number, and 1 special character
-  const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  if (!passwordRegex.test(password)) {
-    Alert.alert(
-      "Weak Password",
-      "Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character."
-    );
-    return;
-  }
+    if (!validate()) return;
+
     const scholarData = {
       name: studentName,
       id: studentId,
-      email, // ✅ include email
+      email,
       password,
       year,
       course,
@@ -115,7 +109,7 @@ const ScholarFormModal = ({
                 {isEditing ? "Edit Scholar Account" : "Create Scholar Account"}
               </Text>
 
-              {/* Student Info */}
+              {/* Student Name */}
               <Text style={styles.label}>Student Name</Text>
               <TextInput
                 placeholder="Student Name"
@@ -125,6 +119,7 @@ const ScholarFormModal = ({
                 style={styles.input}
               />
 
+              {/* Student ID */}
               <Text style={styles.label}>Student ID</Text>
               <TextInput
                 placeholder="00-0000-000000"
@@ -141,7 +136,7 @@ const ScholarFormModal = ({
                 style={styles.input}
               />
 
-              {/* ✅ Email Field */}
+              {/* Email */}
               <Text style={styles.label}>Email</Text>
               <TextInput
                 placeholder="juan.delacruz.au@phinmaed.com"
@@ -152,6 +147,7 @@ const ScholarFormModal = ({
                 onChangeText={setEmail}
                 style={styles.input}
               />
+              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
               {/* Password */}
               <Text style={styles.label}>Password</Text>
@@ -164,18 +160,10 @@ const ScholarFormModal = ({
                   placeholderTextColor="#888"
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeIcon}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color="#6b7280"
-                  />
-                </TouchableOpacity>
+                
+                 
               </View>
+              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
               {/* Year Dropdown */}
               <Text style={styles.label}>Year</Text>
@@ -186,12 +174,10 @@ const ScholarFormModal = ({
                 ]}
                 placeholderStyle={styles.placeholderStyle}
                 selectedTextStyle={styles.selectedTextStyle}
-                inputSearchStyle={styles.inputSearchStyle}
-                iconStyle={styles.iconStyle}
                 data={YEARS.map((y) => ({ label: y, value: y }))}
                 labelField="label"
                 valueField="value"
-                placeholder={!isFocus.year ? "Select Year" : "..."}
+                placeholder="Select Year"
                 value={year}
                 onFocus={() => setIsFocus({ ...isFocus, year: true })}
                 onBlur={() => setIsFocus({ ...isFocus, year: false })}
@@ -218,12 +204,10 @@ const ScholarFormModal = ({
                 ]}
                 placeholderStyle={styles.placeholderStyle}
                 selectedTextStyle={styles.selectedTextStyle}
-                inputSearchStyle={styles.inputSearchStyle}
-                iconStyle={styles.iconStyle}
                 data={COURSES.map((c) => ({ label: c, value: c }))}
                 labelField="label"
                 valueField="value"
-                placeholder={!isFocus.course ? "Select Course" : "..."}
+                placeholder="Select Course"
                 value={course}
                 onFocus={() => setIsFocus({ ...isFocus, course: true })}
                 onBlur={() => setIsFocus({ ...isFocus, course: false })}
@@ -231,14 +215,6 @@ const ScholarFormModal = ({
                   setCourse(item.value);
                   setIsFocus({ ...isFocus, course: false });
                 }}
-                renderLeftIcon={() => (
-                  <AntDesign
-                    style={styles.icon}
-                    color={isFocus.course ? "#0078d7" : "black"}
-                    name="book"
-                    size={18}
-                  />
-                )}
               />
 
               {/* Duty Type Dropdown */}
@@ -250,12 +226,10 @@ const ScholarFormModal = ({
                 ]}
                 placeholderStyle={styles.placeholderStyle}
                 selectedTextStyle={styles.selectedTextStyle}
-                inputSearchStyle={styles.inputSearchStyle}
-                iconStyle={styles.iconStyle}
                 data={DUTY_TYPES.map((d) => ({ label: d, value: d }))}
                 labelField="label"
                 valueField="value"
-                placeholder={!isFocus.duty ? "Select Duty Type" : "..."}
+                placeholder="Select Duty Type"
                 value={dutyType}
                 onFocus={() => setIsFocus({ ...isFocus, duty: true })}
                 onBlur={() => setIsFocus({ ...isFocus, duty: false })}
@@ -263,15 +237,10 @@ const ScholarFormModal = ({
                   setDutyType(item.value);
                   setIsFocus({ ...isFocus, duty: false });
                 }}
-                renderLeftIcon={() => (
-                  <AntDesign
-                    style={styles.icon}
-                    color={isFocus.duty ? "#0078d7" : "black"}
-                    name="idcard"
-                    size={18}
-                  />
-                )}
               />
+
+              {/* General Error */}
+              {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
 
               {/* Buttons */}
               <View style={styles.row}>
@@ -289,7 +258,7 @@ const ScholarFormModal = ({
         </View>
       </Modal>
 
-      {/* ✅ Success Modal */}
+      {/* Success Modal */}
       <Modal visible={successModalVisible} transparent animationType="fade">
         <View style={styles.successOverlay}>
           <ConfettiCannon count={120} origin={{ x: -10, y: 0 }} fadeOut={true} />
@@ -305,104 +274,25 @@ const ScholarFormModal = ({
     </>
   );
 };
+
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalBox: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 20,
-    width: Platform.OS === "web" ? 450 : "90%",
-    maxWidth: 500,
-    maxHeight: "90%",
-  },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
+  modalBox: { backgroundColor: "#fff", borderRadius: 10, padding: 20, width: Platform.OS === "web" ? 450 : "90%", maxHeight: "90%" },
   scrollContent: { flexGrow: 1 },
   title: { fontSize: 18, fontWeight: "700", marginBottom: 15 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 10,
-    marginBottom: 12,
-  },
-  passwordInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    position: "relative",
-    marginBottom: 12,
-  },
-  passwordInput: {
-    flex: 1,
-    paddingRight: 40,
-  },
-  eyeIcon: {
-    position: "absolute",
-    right: 12,
-    zIndex: 20,
-    marginBottom: 6,
-  },
   label: { fontWeight: "600", marginBottom: 5, fontSize: 14 },
-  dropdown: {
-    height: 40,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 15,
-  },
-  icon: { marginRight: 5 },
-  placeholderStyle: { fontSize: 13, color: "#888" },
-  selectedTextStyle: { fontSize: 13, color: "#000" },
-  inputSearchStyle: { height: 35, fontSize: 13 },
-  iconStyle: { width: 18, height: 18 },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 15,
-  },
-  saveBtn: {
-    backgroundColor: "green",
-    padding: 12,
-    borderRadius: 6,
-    flex: 1,
-    marginRight: 5,
-  },
-  cancelBtn: {
-    backgroundColor: "red",
-    padding: 12,
-    borderRadius: 6,
-    flex: 1,
-    marginLeft: 5,
-  },
+  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 10, marginBottom: 8 },
+  passwordInputContainer: { flexDirection: "row", alignItems: "center", position: "relative" },
+  passwordInput: { flex: 1 },
+  errorText: { color: "red", fontSize: 12, marginBottom: 8 },
+  dropdown: { height: 40, borderColor: "#ccc", borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, marginBottom: 12 },
+  row: { flexDirection: "row", justifyContent: "space-between", marginTop: 15 },
+  saveBtn: { backgroundColor: "green", padding: 12, borderRadius: 6, flex: 1, marginRight: 5 },
+  cancelBtn: { backgroundColor: "red", padding: 12, borderRadius: 6, flex: 1, marginLeft: 5 },
   btnText: { color: "#fff", fontWeight: "600", textAlign: "center" },
-
-  // ✅ Success Modal styles
-  successOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  successBox: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 12,
-    width: 300,
-    alignItems: "center",
-    position: "relative",
-  },
-  successText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "green",
-    textAlign: "center",
-    marginVertical: 20,
-  },
+  successOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center" },
+  successBox: { backgroundColor: "#fff", padding: 20, borderRadius: 12, width: 300, alignItems: "center", position: "relative" },
+  successText: { fontSize: 16, fontWeight: "700", color: "green", textAlign: "center", marginVertical: 20 },
   confettiIcon: { fontSize: 40, marginBottom: 10 },
   closeIcon: { position: "absolute", top: 10, right: 10 },
 });

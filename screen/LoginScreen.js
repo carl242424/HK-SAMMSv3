@@ -51,7 +51,7 @@ const LoginFormContent = ({ navigation }) => {
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [timer, setTimer] = useState(60);
+  const [timer, setTimer] = useState(300);
   const [passwordNew, setPasswordNew] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
 
@@ -156,21 +156,12 @@ const handleLogin = () => {
         <View style={styles.passwordInputContainer}>
           <TextInput
             secureTextEntry={!showLoginPassword}
-            style={[styles.input, { paddingRight: 40 }]}
+            style={[styles.input]}
             value={loginPassword}
             onChangeText={setLoginPassword}
             placeholder="Enter Password..."
           />
-          <TouchableOpacity
-            style={styles.eyeIcon}
-            onPress={() => setShowLoginPassword(!showLoginPassword)}
-          >
-            <Ionicons
-              name={showLoginPassword ? "eye-off-outline" : "eye-outline"}
-              size={20}
-              color="#6b7280"
-            />
-          </TouchableOpacity>
+        
         </View>
       </View>
 
@@ -624,12 +615,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#374151",
   },
-  eyeIconInside: {
-    position: "absolute",
-    right: 12,
-    top: "50%",
-    transform: [{ translateY: -15 }],
-  },
+  
   webErrorText: {
     color: "red",
     fontSize: 12,
