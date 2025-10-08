@@ -1,83 +1,137 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+} from "react-native";
 
 const QRCheckIn = ({ scannedData }) => {
-  if (!scannedData) return null;
+  const [records, setRecords] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Auto-add scanned QR data when received
+  useEffect(() => {
+    if (scannedData) {
+      const newRecord = {
+        id: scannedData.id || `NO-ID-${Date.now()}`,
+        name: scannedData.name || "N/A",
+        dutyType: scannedData.dutyType || "N/A",
+        schedules: scannedData.schedules || [],
+        status: scannedData.status || "Active",
+        time: new Date().toLocaleString(),
+      };
+
+      // Prevent duplicates by ID
+      setRecords((prev) => {
+        const exists = prev.some((r) => r.id === newRecord.id);
+        return exists ? prev : [newRecord, ...prev];
+      });
+    }
+  }, [scannedData]);
+
+  // Filter records by search input
+  const filteredRecords = records.filter(
+    (r) =>
+      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>QR Check-In Data</Text>
+    <View style={styles.container}>
+      <Text style={styles.header}>📋 QR Check-In Records</Text>
 
-      <View style={styles.row}>
-        <Text style={styles.label}>ID:</Text>
-        <Text style={styles.value}>{scannedData.id || "N/A"}</Text>
+      {/* Search Bar */}
+      <TextInput
+        placeholder="Search by name or ID..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        style={styles.searchBar}
+      />
+
+      {/* Table Header */}
+      <View style={[styles.row, styles.headerRow]}>
+        <Text style={[styles.cell, styles.headerText]}>ID</Text>
+        <Text style={[styles.cell, styles.headerText]}>Name</Text>
+        <Text style={[styles.cell, styles.headerText]}>Duty</Text>
+        <Text style={[styles.cell, styles.headerText]}>Status</Text>
+        <Text style={[styles.cell, styles.headerText]}>Time</Text>
       </View>
 
-      <View style={styles.row}>
-        <Text style={styles.label}>Name:</Text>
-        <Text style={styles.value}>{scannedData.name || "N/A"}</Text>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={styles.label}>Duty:</Text>
-        <Text style={styles.value}>{scannedData.dutyType || "N/A"}</Text>
-      </View>
-
-      <View style={styles.schedules}>
-        <Text style={[styles.label, { marginBottom: 5 }]}>Schedules:</Text>
-        {scannedData.schedules && scannedData.schedules.length > 0 ? (
-          scannedData.schedules.map((schedule, index) => (
-            <View key={index} style={styles.scheduleRow}>
-              <Text>{schedule.day}</Text>
-              <Text>
-                {schedule.startTime} - {schedule.endTime}
-              </Text>
-              {schedule.room && <Text>Room: {schedule.room}</Text>}
+      {/* Table Body */}
+      <ScrollView>
+        {filteredRecords.length > 0 ? (
+          filteredRecords.map((r, i) => (
+            <View
+              key={i}
+              style={[
+                styles.row,
+                { backgroundColor: i % 2 === 0 ? "#f9f9f9" : "#fff" },
+              ]}
+            >
+              <Text style={styles.cell}>{r.id}</Text>
+              <Text style={styles.cell}>{r.name}</Text>
+              <Text style={styles.cell}>{r.dutyType}</Text>
+              <Text style={styles.cell}>{r.status}</Text>
+              <Text style={styles.cell}>{r.time}</Text>
             </View>
           ))
         ) : (
-          <Text>No schedules available</Text>
+          <Text style={styles.noData}>No check-in records yet.</Text>
         )}
-      </View>
-
-      <View style={styles.row}>
-        <Text style={styles.label}>Status:</Text>
-        <Text style={styles.value}>{scannedData.status || "N/A"}</Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "white",
-    padding: 15,
-    marginHorizontal: 15,
+    backgroundColor: "#fff",
     borderRadius: 10,
+    padding: 12,
+    marginHorizontal: 15,
+    marginTop: 15,
   },
   header: {
-    fontWeight: "bold",
     fontSize: 18,
-    marginBottom: 10,
+    fontWeight: "bold",
     textAlign: "center",
+    marginBottom: 10,
+    color: "#00A4DF",
+  },
+  searchBar: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 10,
   },
   row: {
     flexDirection: "row",
-    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingVertical: 8,
   },
-  label: {
-    fontWeight: "600",
-    width: 80,
-  },
-  value: {
+  cell: {
     flex: 1,
+    textAlign: "center",
+    fontSize: 13,
   },
-  schedules: {
-    marginTop: 10,
-    marginBottom: 10,
+  headerRow: {
+    backgroundColor: "#00A4DF",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
-  scheduleRow: {
-    marginBottom: 6,
+  headerText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  noData: {
+    textAlign: "center",
+    color: "#777",
+    marginTop: 20,
   },
 });
 

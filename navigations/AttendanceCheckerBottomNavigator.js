@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Import your Attendance Checker screens
 import ACDashboard from '../attendance-checker-screens/ACDashboard';
 import AttendanceEncoding from '../attendance-checker-screens/AttendanceEncoding';
-import HoursTracking from '../attendance-checker-screens/HoursTracking';
+import CheckerProfile from '../attendance-checker-screens/CheckerProfile';
 import QRCheckIn from '../attendance-checker-screens/QRCheckIn';
 import QRScannerScreen from '../attendance-checker-screens/QRScannerScreen';
 
@@ -27,8 +27,8 @@ export default function AttendanceCheckerBottomNavigator() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Encoding') {
             iconName = focused ? 'document-text' : 'document-text-outline';
-          } else if (route.name === 'Hours') {
-            iconName = focused ? 'time' : 'time-outline';
+          } else if (route.name === 'My Profile') {
+            iconName = focused ? 'person-circle' : 'person-circle-outline';
           } else if (route.name === 'QR Check-In') {
             iconName = focused ? 'qr-code' : 'qr-code-outline';
           } else if (route.name === 'QR Scanner') {
@@ -41,7 +41,7 @@ export default function AttendanceCheckerBottomNavigator() {
     >
       <Tab.Screen name="ACDashboard" component={ACDashboard} />
       <Tab.Screen name="Encoding" component={AttendanceEncoding} />
-      <Tab.Screen name="Hours" component={HoursTracking} />
+      <Tab.Screen name="My Profile" component={CheckerProfile} />
       <Tab.Screen name="QR Check-In" component={QRCheckIn} />
       <Tab.Screen name="QR Scanner" component={QRScannerScreen} />
     </Tab.Navigator>
