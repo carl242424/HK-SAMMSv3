@@ -12,3 +12,4 @@ const scholarSchema = new mongoose.Schema({
 }, { collection: 'scholars', timestamps: true }); // ✅ keep timestamps
 
 module.exports = mongoose.model('Scholar', scholarSchema);
+

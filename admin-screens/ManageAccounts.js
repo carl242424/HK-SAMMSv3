@@ -44,24 +44,27 @@ export default function ManageAccounts() {
 
   const updateForm = (field, value) =>
     setForm(prevForm => ({ ...prevForm, [field]: value }));
-
- const saveScholar = async (data, isEditing) => {
+const saveScholar = async (data, isEditing) => {
   try {
     if (isEditing && editIndex !== null) {
+      // Update existing scholar
       await fetch(`http://192.168.86.139:8000/api/scholars/${scholars[editIndex]._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
     } else {
+      // Create new scholar (backend auto-creates user account)
       await fetch("http://192.168.86.139:8000/api/scholars", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+      
     }
+
     resetForm();
-    fetchScholars(); // 🔄 Refresh the list
+    fetchScholars(); // Refresh list
   } catch (err) {
     Alert.alert("Error", "Failed to save scholar");
   }
@@ -74,25 +77,41 @@ export default function ManageAccounts() {
     setModalVisible(false);
   };
 
-  // 🔄 Toggle between Active <-> Deactivated
- const toggleScholarStatus = async (index) => {
+// ✅ Toggle status for scholar and refresh
+const toggleScholarStatus = async (scholar) => {
+  const scholarId = scholar._id; 
+  if (!scholarId) {
+    console.error("❌ No _id found for scholar:", scholar);
+    return Alert.alert("Error", "Invalid scholar ID");
+  }
+
+  const newStatus =
+    scholar.status.toLowerCase() === "Active" ? "Inactive" : "Active";
+
   try {
-    const scholar = scholars[index];
-    const response = await fetch(`http://192.168.86.139:8000/api/scholars/${scholar._id}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: scholar.status === "Active" ? "Deactivated" : "Active" }),
-    });
-    const updated = await response.json();
-    const updatedList = [...scholars];
-    updatedList[index] = updated;
-    setScholars(updatedList);
-  } catch (err) {
-    Alert.alert("Error", "Failed to update status");
+    const response = await fetch(
+      `http://192.168.86.139:8000/api/scholars/${scholarId}/status`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to update status");
+    }
+
+    const data = await response.json();
+    console.log("✅ Scholar status updated:", data);
+
+    Alert.alert("Success", `Scholar status changed to ${newStatus}`);
+    await fetchScholars(); // refresh the list after toggle
+  } catch (error) {
+    console.error("❌ Error updating scholar status:", error);
+    Alert.alert("Error", "Failed to update scholar status");
   }
 };
-
-
 
   const filteredScholars = scholars.filter(s =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

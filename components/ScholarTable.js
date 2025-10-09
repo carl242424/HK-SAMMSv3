@@ -95,7 +95,7 @@ const ScholarTable = ({ scholars = [], onEdit, onView, onToggleStatus }) => {
                       s.status === "Active" ? "#d9534f" : "green",
                   },
                 ]}
-                onPress={() => onToggleStatus(index)}
+                onPress={() => onToggleStatus(s)}
               >
                 <Text style={styles.btnText}>
                   {s.status === "Active" ? "Deactivate" : "Re-Activate"}
