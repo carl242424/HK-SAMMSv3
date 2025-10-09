@@ -10,6 +10,7 @@ import AttendanceCheckerBottomNavigator from './navigations/AttendanceCheckerBot
 
 // LoginScreen is in the 'screen' folder
 import LoginScreen from './screen/LoginScreen'; 
+import StudentFaciBottomNavigator from './navigations/StudentFaciBottomNavigator.js';
 
 // 🚨 REMOVED: Dashboard import is no longer needed here as it's part of AdminBottomTabNavigator
 
@@ -32,6 +33,7 @@ export default function App() {
         {/* The 'HomeTabs' is likely redundant, but kept here if it's referenced by non-admin flow */}
         <Stack.Screen name="AttendanceCheckerTabs" component={AttendanceCheckerBottomNavigator} />
         
+        <Stack.Screen name="StudentFacilitatorTabs" component={StudentFaciBottomNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );
