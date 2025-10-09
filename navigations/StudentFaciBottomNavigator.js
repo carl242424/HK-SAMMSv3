@@ -2,19 +2,18 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
-// Import your Attendance Checker screens
-import ACDashboard from '../attendance-checker-screens/ACDashboard';
-import AttendanceEncoding from '../attendance-checker-screens/AttendanceEncoding';
-import CheckerProfile from '../attendance-checker-screens/CheckerProfile';
-import QRCheckIn from '../attendance-checker-screens/QRCheckIn';
-import QRScannerScreen from '../attendance-checker-screens/QRScannerScreen';
+// Import your Student Facilitator screens
+import SFDashboard from '../student-facilitator-screens/SFDashboard';
+import StudentFaciProfile from '../student-facilitator-screens/StudentFaciProfile';
+import QRCheckIn from '../student-facilitator-screens/QRCheckIn';
+import QRScannerScreen from '../student-facilitator-screens/QRScannerScreen';
 
 const Tab = createBottomTabNavigator();
 
-export default function AttendanceCheckerBottomNavigator() {
+export default function StudentFaciBottomNavigator() {
   return (
     <Tab.Navigator
-      initialRouteName="ACDashboard"
+      initialRouteName="SFDashboard"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: '#60a5fa', // Blue
@@ -23,7 +22,7 @@ export default function AttendanceCheckerBottomNavigator() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
-          if (route.name === 'ACDashboard') {
+          if (route.name === 'SFDashboard') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Encoding') {
             iconName = focused ? 'document-text' : 'document-text-outline';
@@ -39,9 +38,8 @@ export default function AttendanceCheckerBottomNavigator() {
         },
       })}
     >
-      <Tab.Screen name="ACDashboard" component={ACDashboard} />
-      <Tab.Screen name="Encoding" component={AttendanceEncoding} />
-      <Tab.Screen name="My Profile" component={CheckerProfile} />
+      <Tab.Screen name="SFDashboard" component={SFDashboard} />
+      <Tab.Screen name="My Profile" component={StudentFaciProfile} />
       <Tab.Screen name="QR Check-In" component={QRCheckIn} />
       <Tab.Screen name="QR Scanner" component={QRScannerScreen} />
     </Tab.Navigator>

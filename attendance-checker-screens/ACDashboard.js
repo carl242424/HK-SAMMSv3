@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const ACDashboard = () => {
   const stats = [
@@ -7,16 +8,30 @@ const ACDashboard = () => {
       title: "Today's Checks",
       value: '100',
       subtitle: 'student faci encoded',
+      icon: 'checkmark-circle-outline',
+      color: '#10B981', // Green
     },
     {
       title: 'Current Shift',
       value: '1hr 2m',
       subtitle: 'Remaining',
+      icon: 'time-outline',
+      color: '#F59E0B', // Orange
     },
     {
       title: 'This Week',
       value: '100 Hours',
       subtitle: 'Completed',
+      icon: 'calendar-outline',
+      color: '#3B82F6', // Blue
+    },
+    {
+      title: 'Progress Hours',
+      value: '35/70 hrs',
+      subtitle: '50% to semester goal',
+      icon: 'trending-up-outline',
+      color: '#8B5CF6', // Purple
+      progress: 50, // Percentage for progress bar
     },
   ];
 
@@ -37,9 +52,19 @@ const ACDashboard = () => {
       <View style={styles.statsRow}>
         {stats.map((stat, index) => (
           <View key={index} style={styles.card}>
+            <View style={styles.iconContainer}>
+              <Ionicons name={stat.icon} size={28} color={stat.color} />
+            </View>
             <Text style={styles.cardTitle}>{stat.title}</Text>
             <Text style={styles.cardValue}>{stat.value}</Text>
             <Text style={styles.cardSubtitle}>{stat.subtitle}</Text>
+            {stat.progress !== undefined && (
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View style={[styles.progressFill, { width: `${stat.progress}%`, backgroundColor: stat.color }]} />
+                </View>
+              </View>
+            )}
           </View>
         ))}
       </View>
@@ -62,65 +87,104 @@ const ACDashboard = () => {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    flexGrow: 1,
+    padding: 16,
+    backgroundColor: '#F8FAFC',
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: 24,
     flexWrap: 'wrap',
   },
   card: {
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-    borderRadius: 8,
-    width: '30%',
-    marginBottom: 15,
-    elevation: 2, // Android shadow
-    shadowColor: '#000', // iOS shadow
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    width: '48%',
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+  iconContainer: {
+    alignSelf: 'center',
     marginBottom: 8,
   },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
   cardValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 5,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+    color: '#1E293B',
+    textAlign: 'center',
   },
   cardSubtitle: {
-    color: '#666',
-    fontSize: 14,
+    color: '#64748B',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   scheduleSection: {
-    marginTop: 10,
+    marginTop: 8,
   },
   scheduleTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 10,
+    marginBottom: 12,
+    color: '#1E293B',
   },
   scheduleBox: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    borderColor: '#ddd',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
   },
   scheduleItem: {
-    marginBottom: 10,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   scheduleDate: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#1E293B',
+    marginBottom: 2,
   },
   scheduleTime: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: 13,
+    color: '#64748B',
   },
 });
 

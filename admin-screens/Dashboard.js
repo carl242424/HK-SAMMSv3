@@ -76,7 +76,6 @@ const Dashboard = () => {
     { title: 'Absent Today', value: '5', detail: '20% Absence Rate', detailColor: 'red', iconName: 'close-circle-outline' },
     { title: 'Weekly Average', value: '92%', detail: '+1% From last week', detailColor: 'green', iconName: 'trending-up-outline' },
     { title: 'Monthly Goal', value: '80%', detail: 'Attendance Target: 90%', detailColor: '#60a5fa', iconName: 'target-outline' },
-    { title: 'Late Arrivals', value: '3', detail: 'Focus Area', detailColor: 'orange', iconName: 'time-outline' },
     { title: 'This Week', value: '500', detail: 'Total Check-ins', detailColor: 'green', iconName: 'calendar-outline' },
   ];
 
@@ -94,7 +93,6 @@ const chartConfig = {
 const statusColors = {
   present: '#10b981',
   absent: '#ef4444',
-  late: '#f59e0b',
 };
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const [selectedMonth, setSelectedMonth] = useState('Oct');
@@ -110,11 +108,11 @@ const statusColors = {
   // Bar Chart Data (Daily Attendance Counts) - Modified for react-native-chart-kit format
   const getOriginalBarData = () => {
     const defaultData = [
-      { day: 'Mon', present: 95, absent: 5, late: 0 }, 
-      { day: 'Tue', present: 92, absent: 8, late: 2 }, 
-      { day: 'Wed', present: 88, absent: 12, late: 3 }, 
-      { day: 'Thu', present: 96, absent: 4, late: 1 }, 
-      { day: 'Fri', present: 90, absent: 10, late: 2 }, 
+      { day: 'Mon', present: 95, absent: 5 }, 
+      { day: 'Tue', present: 92, absent: 8 }, 
+      { day: 'Wed', present: 88, absent: 12}, 
+      { day: 'Thu', present: 96, absent: 4}, 
+      { day: 'Fri', present: 90, absent: 10}, 
     ];
     
     if (isMonthWithHighAbsence) {
@@ -133,13 +131,13 @@ const statusColors = {
       return [
         { name: 'Present', population: 380, color: 'rgba(52, 199, 89, 0.8)', legendFontColor: '#333', legendFontSize: 12, status: 'present' },
         { name: 'Absent', population: 100, color: 'rgba(239, 68, 68, 0.8)', legendFontColor: '#333', legendFontSize: 12, status: 'absent' },
-        { name: 'Late', population: 20, color: 'rgba(251, 191, 36, 0.8)', legendFontColor: '#333', legendFontSize: 12, status: 'late' },
+       
       ];
     }
     return [
       { name: 'Present', population: 450, color: 'rgba(52, 199, 89, 0.8)', legendFontColor: '#333', legendFontSize: 12, status: 'present' },
       { name: 'Absent', population: 50, color: 'rgba(239, 68, 68, 0.8)', legendFontColor: '#333', legendFontSize: 12, status: 'absent' },
-      { name: 'Late', population: 20, color: 'rgba(251, 191, 36, 0.8)', legendFontColor: '#333', legendFontSize: 12, status: 'late' },
+     
     ];
   };
   const originalPieData = getOriginalPieData();
@@ -163,14 +161,14 @@ const statusColors = {
         strokeWidth: 2,
       },
     ],
-    legend: ['Present %', 'Absent %', 'Late %'],
+    legend: ['Present %', 'Absent %'],
   };
 
   const [selectedDays, setSelectedDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-  const [selectedStatusesBar, setSelectedStatusesBar] = useState(['present', 'absent', 'late']);
-  const [selectedPieStatuses, setSelectedPieStatuses] = useState(['present', 'absent', 'late']); 
+  const [selectedStatusesBar, setSelectedStatusesBar] = useState(['present', 'absent']);
+  const [selectedPieStatuses, setSelectedPieStatuses] = useState(['present', 'absent']); 
   const [selectedWeeks, setSelectedWeeks] = useState(['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4']);
-  const [selectedStatusesLine, setSelectedStatusesLine] = useState(['present', 'absent', 'late']);
+  const [selectedStatusesLine, setSelectedStatusesLine] = useState(['present', 'absent']);
 
   const getFilteredData = (originalData, selectedLabels, allLabels) => {
     return allLabels.map((label, i) => selectedLabels.includes(label) ? originalData[i] : null).filter(Boolean);
@@ -202,7 +200,7 @@ const statusColors = {
     const filteredLabels = originalLineData.labels.filter(label => selectedWeeks.includes(label));
     if (filteredLabels.length === 0) return { labels: [], datasets: [], legend: [] };
 
-    const statusMap = { present: 0, absent: 1, late: 2 };
+    const statusMap = { present: 0, absent: 1 };
     const filteredDatasets = originalLineData.datasets
       .filter((_, index) => selectedStatusesLine.includes(Object.keys(statusMap)[index]))
       .map(dataset => ({
@@ -278,7 +276,7 @@ const statusColors = {
       <View style={styles.filterRow}>
         <FilterButton label="Present" isSelected={selectedStatusesBar.includes('present')} onPress={() => toggleStatusBar('present')} color="#10b981" bgColor="#d1fae5" />
         <FilterButton label="Absent" isSelected={selectedStatusesBar.includes('absent')} onPress={() => toggleStatusBar('absent')} color="#ef4444" bgColor="#fee2e2" />
-        <FilterButton label="Late" isSelected={selectedStatusesBar.includes('late')} onPress={() => toggleStatusBar('late')} color="#f59e0b" bgColor="#fef3c7" />
+        
       </View>
     </View>
   );
@@ -288,7 +286,7 @@ const statusColors = {
       <View style={styles.filterRow}>
         <FilterButton label="Present" isSelected={selectedPieStatuses.includes('present')} onPress={() => togglePieStatus('present')} color="#10b981" bgColor="#d1fae5" />
         <FilterButton label="Absent" isSelected={selectedPieStatuses.includes('absent')} onPress={() => togglePieStatus('absent')} color="#ef4444" bgColor="#fee2e2" />
-        <FilterButton label="Late" isSelected={selectedPieStatuses.includes('late')} onPress={() => togglePieStatus('late')} color="#f59e0b" bgColor="#fef3c7" />
+        
       </View>
     </View>
   );
@@ -310,7 +308,7 @@ const statusColors = {
       <View style={styles.filterRow}>
         <FilterButton label="Present" isSelected={selectedStatusesLine.includes('present')} onPress={() => toggleStatusLine('present')} color="#10b981" bgColor="#d1fae5" />
         <FilterButton label="Absent" isSelected={selectedStatusesLine.includes('absent')} onPress={() => toggleStatusLine('absent')} color="#ef4444" bgColor="#fee2e2" />
-        <FilterButton label="Late" isSelected={selectedStatusesLine.includes('late')} onPress={() => toggleStatusLine('late')} color="#f59e0b" bgColor="#fef3c7" />
+       
       </View>
     </View>
   );
@@ -421,10 +419,7 @@ const statusColors = {
           <View style={[styles.legendColor, { backgroundColor: statusColors.absent }]} />
           <Text style={styles.legendText}>Absent</Text>
         </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: statusColors.late }]} />
-          <Text style={styles.legendText}>Late</Text>
-        </View>
+        
       </View>
     </>
   ) : (
