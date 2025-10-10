@@ -26,38 +26,41 @@ const transporter = nodemailer.createTransport({
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
-
     if (!username || !password)
       return res.status(400).json({ message: "Username and password are required" });
 
-    // Find user
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    // Check password
+    // ❌ Check if user is inactive
+    if (user.status && user.status.toLowerCase() === "inactive") {
+      // Send email notifying deactivation
+      await transporter.sendMail({
+        from: EMAIL_USER,
+        to: user.email,
+        subject: "Account Deactivated",
+        text: `Hello ${user.username},\n\nYour account has been deactivated. Please contact admin for reactivation.`,
+      });
+
+      return res.status(403).json({ message: "Your account is deactivated. Check your email." });
+    }
+
     const isMatch = await user.matchPassword(password);
     if (!isMatch) return res.status(401).json({ message: "Invalid password" });
 
-    // Debug logs
-    console.log("✅ User found:", user.username);
-    console.log("✅ User role:", user.role);
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "1d" });
 
-    // Create JWT
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
-
-    // Return role and token
     res.status(200).json({
       message: "Login successful",
       token,
-      role: user.role || "unknown", // <--- ensure it sends something even if undefined
+      role: user.role || "unknown",
     });
   } catch (error) {
     console.error("❌ Login error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 // ---------------- SEND OTP ----------------

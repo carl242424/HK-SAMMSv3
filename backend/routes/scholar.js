@@ -109,18 +109,29 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(404).json({ message: 'Scholar not found' });
     }
 
-    // ✅ Toggle scholar status (Active ↔ Inactive)
+    // Toggle scholar status (Active ↔ Inactive)
     scholar.status =
       scholar.status.toLowerCase() === 'active' ? 'Inactive' : 'Active';
     await scholar.save();
     console.log('✅ Scholar status updated:', scholar.status);
 
-    // ✅ Find linked user (based on scholar.id = user.username)
+    // Find linked user (based on scholar.id = user.username)
     const user = await User.findOne({ username: scholar.id.toString() });
     if (user) {
       user.status = scholar.status; // mirror scholar’s status
       await user.save();
       console.log(`✅ User status updated for ${user.username}: ${user.status}`);
+
+      // Send email if account is deactivated
+      if (scholar.status.toLowerCase() === 'inactive') {
+        await transporter.sendMail({
+          from: EMAIL_USER,
+          to: user.email,
+          subject: 'Account Deactivated',
+          text: `Hello ${user.username},\n\nYour account has been deactivated by admin. You will not be able to login until reactivated.`,
+        });
+        console.log(`📧 Deactivation email sent to ${user.email}`);
+      }
     } else {
       console.log(`⚠️ No linked user found for scholar ID: ${scholar.id}`);
     }
@@ -134,7 +145,6 @@ router.patch('/:id/status', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 
 
 module.exports = router;
