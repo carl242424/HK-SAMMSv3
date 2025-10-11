@@ -76,20 +76,41 @@ const handleLogin = async () => {
     setError("Please enter username and password.");
     return;
   }
- // ✅ Temporary login (bypass backend)
-  // if (
-  //   username.trim().toLowerCase() === "temporary.au@phinmaed.com" &&
-  //   loginPassword === "Test123@@"
-  // ) {
-  //   Alert.alert("Login Successful", "Welcome, Temporary User!");
-  //   await AsyncStorage.setItem("token", "temporary-token");
-  //   await AsyncStorage.setItem("role", "admin"); // or "checker" depending on your test
-  //   navigation.reset({
-  //     index: 0,
-  //     routes: [{ name: "AdminTabs" }], // adjust if needed
-  //   });
-  //   return;
-  // }
+
+  // Temporary login (bypass backend)
+  if (username.trim().toLowerCase() === "temporary.au@phinmaed.com" && loginPassword === "Test123@@") {
+    Alert.alert("Login Successful", "Welcome, Admin User!");
+    await AsyncStorage.setItem("token", "temporary-admin-token");
+    await AsyncStorage.setItem("role", "Admin");
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "AdminTabs" }],
+    });
+    return;
+  }
+
+  if (username.trim().toLowerCase() === "temporary.checker.au@phinmaed.com" && loginPassword === "Test123@@") {
+    Alert.alert("Login Successful", "Welcome, Attendance Checker!");
+    await AsyncStorage.setItem("token", "temporary-checker-token");
+    await AsyncStorage.setItem("role", "checker");
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "AttendanceCheckerTabs" }],
+    });
+    return;
+  }
+
+  if (username.trim().toLowerCase() === "student.au@phinmaed.com" && loginPassword === "Test123@@") {
+    Alert.alert("Login Successful", "Welcome, Student Facilitator!");
+    await AsyncStorage.setItem("token", "temporary-student-token");
+    await AsyncStorage.setItem("role", "student");
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "StudentFacilitatorTabs" }],
+    });
+    return;
+  }
+
   try {
     const response = await fetch("http://192.168.86.139:8000/api/auth/login", {
       method: "POST",
@@ -114,6 +135,11 @@ const handleLogin = async () => {
         navigation.reset({
           index: 0,
           routes: [{ name: "AttendanceCheckerTabs" }],
+        });
+      } else if (data.role === "student") {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "StudentFacilitatorTabs" }],
         });
       } else {
         Alert.alert("Error", "Unknown role");
