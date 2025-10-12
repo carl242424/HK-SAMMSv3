@@ -11,6 +11,9 @@ import StudentFaciBottomNavigator from './navigations/StudentFaciBottomNavigator
 
 // LoginScreen is in the 'screen' folder
 import LoginScreen from './screen/LoginScreen'; 
+import CheckerHeader from './attendance-checker-components/CheckerHeader.js';
+import CheckerNavigator from './navigations/CheckerNavigator.js';
+import StudentFaciNavigator from './navigations/StudentFaciNavigator.js';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,8 +32,8 @@ export default function App() {
         <Stack.Screen name="AdminTabs" component={AdminNavigator} />
         
         {/* Keep other navigators as they are */}
-        <Stack.Screen name="AttendanceCheckerTabs" component={AttendanceCheckerBottomNavigator} />
-        <Stack.Screen name="StudentFacilitatorTabs" component={StudentFaciBottomNavigator} />
+        <Stack.Screen name="AttendanceCheckerTabs" component={CheckerNavigator} />
+        <Stack.Screen name="StudentFacilitatorTabs" component={StudentFaciNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );
