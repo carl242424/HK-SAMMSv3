@@ -10,17 +10,20 @@ import {
 const AdminTable = ({ admins, onDisable, onReactivate }) => {
   const [searchText, setSearchText] = useState("");
 
-  // Filter admins based on search text
-  const filteredAdmins = admins.filter(
-    (admin) =>
-      admin.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      admin.id.toLowerCase().includes(searchText.toLowerCase()) ||
-      (admin.email && admin.email.toLowerCase().includes(searchText.toLowerCase()))
+  const filteredAdmins = admins.filter((admin) =>
+    (admin.username || "")
+      .toLowerCase()
+      .includes((searchText || "").toLowerCase()) ||
+    (admin.employeeId || "")
+      .toLowerCase()
+      .includes((searchText || "").toLowerCase()) ||
+    (admin.email || "")
+      .toLowerCase()
+      .includes((searchText || "").toLowerCase())
   );
 
   return (
     <View style={styles.wrapper}>
-      {/* Search Bar */}
       <TextInput
         style={styles.searchBar}
         placeholder="Search by name, Employee ID, or email..."
@@ -28,9 +31,7 @@ const AdminTable = ({ admins, onDisable, onReactivate }) => {
         onChangeText={setSearchText}
       />
 
-      {/* Table */}
       <View style={styles.table}>
-        {/* Header */}
         <View style={[styles.row, styles.header]}>
           <Text style={styles.cell}>Admin Name</Text>
           <Text style={styles.cell}>Employee ID</Text>
@@ -39,60 +40,60 @@ const AdminTable = ({ admins, onDisable, onReactivate }) => {
           <Text style={styles.cell}>Action</Text>
         </View>
 
-        {/* Rows */}
         {filteredAdmins.length > 0 ? (
-          filteredAdmins.map((admin, index) => (
-            <View key={index} style={styles.row}>
-              <Text style={styles.cell}>{admin.name}</Text>
-              <Text style={styles.cell}>{admin.id}</Text>
-              <Text style={styles.cell}>{admin.email || "—"}</Text>
-              <Text style={styles.cell}>{admin.status}</Text>
-
-              <View style={styles.actionWrapper}>
-                <TouchableOpacity
-                  style={[
-                    styles.actionBtn,
-                    {
-                      backgroundColor:
-                        admin.status === "Inactive" ? "#f0f0f0" : "#f8d7da",
-                    },
-                  ]}
-                  onPress={() => onDisable(index)}
-                  disabled={admin.status === "Inactive"}
-                >
-                  <Text
+          filteredAdmins.map((admin, index) => {
+            console.log("Admin data:", admin); // Debug log
+            return (
+              <View key={index} style={styles.row}>
+                <Text style={styles.cell}>{admin.username}</Text>
+                <Text style={styles.cell}>{admin.employeeId || "—"}</Text>
+                <Text style={styles.cell}>{admin.email || "—"}</Text>
+                <Text style={styles.cell}>{admin.status}</Text>
+                <View style={styles.actionWrapper}>
+                  <TouchableOpacity
                     style={[
-                      styles.btnText,
-                      { color: admin.status === "Inactive" ? "#aaa" : "#721c24" },
+                      styles.actionBtn,
+                      {
+                        backgroundColor:
+                          admin.status === "Inactive" ? "#f0f0f0" : "#f8d7da",
+                      },
                     ]}
+                    onPress={() => onDisable(index)}
+                    disabled={admin.status === "Inactive"}
                   >
-                    Deactivate
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.actionBtn,
-                    {
-                      backgroundColor:
-                        admin.status === "Active" ? "#f0f0f0" : "#d4edda",
-                    },
-                  ]}
-                  onPress={() => onReactivate(index)}
-                  disabled={admin.status === "Active"}
-                >
-                  <Text
+                    <Text
+                      style={[
+                        styles.btnText,
+                        { color: admin.status === "Inactive" ? "#aaa" : "#721c24" },
+                      ]}
+                    >
+                      Deactivate
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     style={[
-                      styles.btnText,
-                      { color: admin.status === "Active" ? "#aaa" : "#155724" },
+                      styles.actionBtn,
+                      {
+                        backgroundColor:
+                          admin.status === "Active" ? "#f0f0f0" : "#d4edda",
+                      },
                     ]}
+                    onPress={() => onReactivate(index)}
+                    disabled={admin.status === "Active"}
                   >
-                    Reactivate
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[
+                        styles.btnText,
+                        { color: admin.status === "Active" ? "#aaa" : "#155724" },
+                      ]}
+                    >
+                      Reactivate
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          ))
+            );
+          })
         ) : (
           <View style={styles.row}>
             <Text style={{ flex: 1, textAlign: "center", color: "#666" }}>
