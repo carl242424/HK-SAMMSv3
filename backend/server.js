@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const scholarRoutes = require('./routes/scholar');
+const dutyRoutes = require("./routes/duty");
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -24,6 +25,8 @@ mongoose.connect(process.env.MONGO_URI, {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/scholars', scholarRoutes);
+app.use("/api/duties", dutyRoutes);
+
 
 
 app.listen(PORT, () => {

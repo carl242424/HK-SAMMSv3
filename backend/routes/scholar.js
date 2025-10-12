@@ -26,6 +26,7 @@ transporter.verify((error, success) => {
   }
 });
 
+
 // ✅ Get all scholars
 router.get('/', async (req, res) => {
   try {
@@ -183,6 +184,20 @@ router.patch('/:id/status', async (req, res) => {
   } catch (error) {
     console.error('❌ Error updating scholar status:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+// ✅ NEW: Get a single scholar by student ID (custom field `id`)
+router.get('/:id', async (req, res) => {
+  try {
+    const scholar = await Scholar.findOne({ id: req.params.id });
+    if (scholar) {
+      res.json({ exists: true, scholar });
+    } else {
+      res.json({ exists: false });
+    }
+  } catch (err) {
+    console.error('❌ Error fetching scholar by ID:', err);
+    res.status(500).json({ message: err.message });
   }
 });
 

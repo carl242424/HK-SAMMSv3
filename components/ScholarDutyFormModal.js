@@ -14,6 +14,7 @@ import { Dropdown } from "react-native-element-dropdown";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import ConfettiCannon from "react-native-confetti-cannon"; 
 import { Ionicons } from "@expo/vector-icons";
+
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const TIMES = [
   "7:00 AM","7:30 AM","8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM",
@@ -30,6 +31,7 @@ const ScholarDutyFormModal = ({
   onClose,
   onSave,
   initialData = null,
+  onIdChange, // Prop from DutyManagement to trigger auto-fill
   YEARS,
   COURSES,
   DUTY_TYPES,
@@ -40,19 +42,39 @@ const ScholarDutyFormModal = ({
   const [course, setCourse] = useState(null);
   const [dutyType, setDutyType] = useState(null);
   const [schedules, setSchedules] = useState([{ day: "", startTime: "", endTime: "", room: "" }]);
-
-    const [successModalVisible, setSuccessModalVisible] = useState(false); // ✅ Success modal state
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
 
   useEffect(() => {
     if (visible) {
+      console.log("Modal opened with initialData:", initialData); // Log initial data
+      console.log("isEditing value:", !!initialData); // Log isEditing value
       setStudentName(initialData?.name || "");
       setStudentId(initialData?.id || "");
       setYear(initialData?.year || null);
       setCourse(initialData?.course || null);
-      setDutyType(initialData?.duty || null);
+      setDutyType(initialData?.dutyType || null); // Sync with initialData.dutyType
       setSchedules(initialData?.schedules || [{ day: "", startTime: "", endTime: "", room: "" }]);
     }
   }, [visible, initialData]);
+
+  // Handle ID change to trigger auto-fill via parent
+  const handleIdChange = (text) => {
+    console.log("ID input changed:", text);
+    let formatted = text.replace(/[^0-9-]/g, "");
+    if (formatted.length === 2 && studentId.length < 2) formatted += "-";
+    if (formatted.length === 7 && studentId.length < 7) formatted += "-";
+    setStudentId(formatted);
+    if (onIdChange && formatted.length === 14) {
+      console.log("Triggering onIdChange with:", formatted);
+      onIdChange(formatted); // Trigger parent fetch when fully formatted
+    }
+  };
+
+  // Log dutyType when changed
+  const handleDutyTypeChange = (item) => {
+    console.log("Duty type changed to:", item.value);
+    setDutyType(item.value);
+  };
 
   const isEditing = !!initialData;
 
@@ -68,53 +90,60 @@ const ScholarDutyFormModal = ({
         : s.day && s.startTime && s.endTime && s.room
     );
 
-  const handleSave = () => {
-  if (!isFormComplete) {
-    return Alert.alert("Missing Info", "Please fill in all fields.");
-  }
-
-  for (let s of schedules) {
-    const startIndex = TIMES.indexOf(s.startTime);
-    const endIndex = TIMES.indexOf(s.endTime);
-
-    // Validate proper time selection
-    if (startIndex === -1 || endIndex === -1) {
-      return Alert.alert("Invalid Selection", "Please select valid start and end times.");
+  const handleSave = async () => {
+    console.log("handleSave called");
+    if (!isFormComplete) {
+      console.log("Form incomplete, showing alert");
+      return Alert.alert("Missing Info", "Please fill in all fields.");
     }
 
-    // Validate end time is later than start time
-    if (startIndex >= endIndex) {
-      return Alert.alert("Invalid Time", "End time must be later than Start time.");
+    for (let s of schedules) {
+      const startIndex = TIMES.indexOf(s.startTime);
+      const endIndex = TIMES.indexOf(s.endTime);
+
+      if (startIndex === -1 || endIndex === -1) {
+        return Alert.alert("Invalid Selection", "Please select valid start and end times.");
+      }
+
+      if (startIndex >= endIndex) {
+        return Alert.alert("Invalid Time", "End time must be later than Start time.");
+      }
+
+      const diff = endIndex - startIndex;
+      if (diff < 2) {
+        return Alert.alert("Invalid Duty Duration", "1hr or above allowed duty hours.");
+      }
     }
 
-    // Validate minimum 1 hour (2 half-hour intervals)
-    const diff = endIndex - startIndex;
-    if (diff < 2) {
-      return Alert.alert("Invalid Duty Duration", "1hr or above allowed duty hours.");
+    try {
+      console.log("Calling onSave with duty data");
+      await onSave({
+        name: studentName,
+        id: studentId,
+        year,
+        course,
+        dutyType,
+        schedules,
+        status: "Active",
+      }, isEditing);
+      console.log("onSave completed successfully");
+      onClose();
+      setSuccessModalVisible(true);
+    } catch (error) {
+      console.error("Save error caught in handleSave:", error.message);
+      if (error.message === "Unknown account. Please register first.") {
+        console.log("Showing account error alert");
+        Alert.alert("Account Error", "Unknown account. Please register first.");
+      } else {
+        console.log("Showing generic save error alert");
+        Alert.alert("Save Error", `Failed to save duty: ${error.message || "Please check the data."}`);
+      }
     }
-  }
-
-  const dutyData = {
-    name: studentName,
-    id: studentId,
-    year,
-    course,
-    duty: dutyType,
-    schedules,
-    status: "Active", // ✅ default status
   };
 
-  onSave(dutyData, isEditing);
-
-  // ✅ Close form and show success modal
-  onClose();
-  setSuccessModalVisible(true);
-};
-
-
- const closeSuccessModal = () => {
-  setSuccessModalVisible(false);
-};
+  const closeSuccessModal = () => {
+    setSuccessModalVisible(false);
+  };
 
   const addSchedule = () => {
     setSchedules([...schedules, { day: "", startTime: "", endTime: "", room: "" }]);
@@ -126,201 +155,184 @@ const ScholarDutyFormModal = ({
     setSchedules(updated);
   };
 
-  // Helper for dropdown data formatting
   const toDropdownData = (arr) => arr.map((v) => ({ label: v, value: v }));
 
   return (
-       <>
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
-        <View style={styles.modalBox}>
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.title}>{isEditing ? "Edit Scholar Duty" : "Assign Scholar Duty"}</Text>
+    <>
+      <Modal visible={visible} animationType="slide" transparent>
+        <View style={styles.overlay}>
+          <View style={styles.modalBox}>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+              <Text style={styles.title}>{isEditing ? "Edit Scholar Duty" : "Assign Scholar Duty"}</Text>
 
-            {/* Student Info */}
-            <Text style={styles.label}>Student Name</Text>
-            <TextInput
-              placeholder="Enter Student Name"
-              placeholderTextColor="#888"
-              value={studentName}
-              onChangeText={setStudentName}
-              style={styles.input}
-            />
+              <Text style={styles.label}>Student Name</Text>
+              <TextInput
+                placeholder="Enter Student Name"
+                placeholderTextColor="#888"
+                value={studentName}
+                onChangeText={setStudentName}
+                style={styles.input}
+              />
 
-            <Text style={styles.label}>Student ID</Text>
-            <TextInput
-             placeholder="00-0000-000000"
-              placeholderTextColor="#888"
-              value={studentId}
-              keyboardType="numeric"
-              onChangeText={(text) => {
-                let formatted = text.replace(/[^0-9-]/g, "");
-                if (formatted.length === 2 && studentId.length < 2) formatted += "-";
-                if (formatted.length === 7 && studentId.length < 7) formatted += "-";
-                setStudentId(formatted);
-              }}
-              maxLength={14}
-              style={styles.input}
-            />
+              <Text style={styles.label}>Student ID</Text>
+              <TextInput
+                placeholder="00-0000-000000"
+                placeholderTextColor="#888"
+                value={studentId}
+                keyboardType="numeric"
+                onChangeText={handleIdChange} // Use the custom handler
+                maxLength={14}
+                style={styles.input}
+              />
 
-            {/* Year */}
-            <Text style={styles.label}>Year</Text>
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              data={toDropdownData(YEARS)}
-              labelField="label"
-              valueField="value"
-              placeholder="Select Year"
-              value={year}
-              onChange={(item) => setYear(item.value)}
-              renderLeftIcon={() => (
-                <AntDesign name="calendar" size={16} color="#555" style={styles.icon} />
-              )}
-            />
+              <Text style={styles.label}>Year</Text>
+              <Dropdown
+                style={styles.dropdown}
+                placeholderStyle={styles.placeholderStyle}
+                selectedTextStyle={styles.selectedTextStyle}
+                data={toDropdownData(YEARS)}
+                labelField="label"
+                valueField="value"
+                placeholder="Select Year"
+                value={year}
+                onChange={(item) => setYear(item.value)}
+                renderLeftIcon={() => (
+                  <AntDesign name="calendar" size={16} color="#555" style={styles.icon} />
+                )}
+              />
 
-            {/* Course */}
-            <Text style={styles.label}>Course</Text>
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              data={toDropdownData(COURSES)}
-              labelField="label"
-              valueField="value"
-              placeholder="Select Course"
-              value={course}
-              onChange={(item) => setCourse(item.value)}
-              renderLeftIcon={() => (
-                <AntDesign name="book" size={16} color="#555" style={styles.icon} />
-              )}
-            />
+              <Text style={styles.label}>Course</Text>
+              <Dropdown
+                style={styles.dropdown}
+                placeholderStyle={styles.placeholderStyle}
+                selectedTextStyle={styles.selectedTextStyle}
+                data={toDropdownData(COURSES)}
+                labelField="label"
+                valueField="value"
+                placeholder="Select Course"
+                value={course}
+                onChange={(item) => setCourse(item.value)}
+                renderLeftIcon={() => (
+                  <AntDesign name="book" size={16} color="#555" style={styles.icon} />
+                )}
+              />
 
-            {/* Duty Type */}
-            <Text style={styles.label}>Duty Type</Text>
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              data={toDropdownData(DUTY_TYPES)}
-              labelField="label"
-              valueField="value"
-              placeholder="Select Duty Type"
-              value={dutyType}
-              onChange={(item) => setDutyType(item.value)}
-              renderLeftIcon={() => (
-                <AntDesign name="idcard" size={16} color="#555" style={styles.icon} />
-              )}
-            />
+              <Text style={styles.label}>Duty Type</Text>
+              <Dropdown
+                style={styles.dropdown}
+                placeholderStyle={styles.placeholderStyle}
+                selectedTextStyle={styles.selectedTextStyle}
+                data={toDropdownData(DUTY_TYPES)}
+                labelField="label"
+                valueField="value"
+                placeholder="Select Duty Type"
+                value={dutyType} // Use local state
+                onChange={handleDutyTypeChange} // Use custom handler for logging
+                renderLeftIcon={() => (
+                  <AntDesign name="idcard" size={16} color="#555" style={styles.icon} />
+                )}
+              />
 
-            {/* Schedules */}
-            <Text style={styles.sectionTitle}>Schedules</Text>
-            {schedules.map((sched, index) => (
-              <View key={index} style={styles.scheduleCard}>
-                <Text style={styles.scheduleTitle}>Schedule {index + 1}</Text>
+              <Text style={styles.sectionTitle}>Schedules</Text>
+              {schedules.map((sched, index) => (
+                <View key={index} style={styles.scheduleCard}>
+                  <Text style={styles.scheduleTitle}>Schedule {index + 1}</Text>
 
-                <Dropdown
-                  style={styles.dropdown}
-                  placeholderStyle={styles.placeholderStyle}
-                  selectedTextStyle={styles.selectedTextStyle}
-                  data={toDropdownData(DAYS)}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="Select Day"
-                  value={sched.day}
-                  onChange={(item) => updateSchedule(index, "day", item.value)}
-                  renderLeftIcon={() => (
-                    <AntDesign name="calendar" size={16} color="#555" style={styles.icon} />
-                  )}
-                />
-
-                <View style={styles.row}>
-                  <Dropdown
-                    style={[styles.dropdown, { flex: 1, marginRight: 5 }]}
-                    placeholderStyle={styles.placeholderStyle}
-                    selectedTextStyle={styles.selectedTextStyle}
-                    data={toDropdownData(TIMES)}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Start Time"
-                    value={sched.startTime}
-                    onChange={(item) => updateSchedule(index, "startTime", item.value)}
-                  />
-                  <Dropdown
-                    style={[styles.dropdown, { flex: 1, marginLeft: 5 }]}
-                    placeholderStyle={styles.placeholderStyle}
-                    selectedTextStyle={styles.selectedTextStyle}
-                    data={toDropdownData(TIMES)}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="End Time"
-                    value={sched.endTime}
-                    onChange={(item) => updateSchedule(index, "endTime", item.value)}
-                  />
-                </View>
-
-                {dutyType !== "Attendance Checker" && (
                   <Dropdown
                     style={styles.dropdown}
                     placeholderStyle={styles.placeholderStyle}
                     selectedTextStyle={styles.selectedTextStyle}
-                    data={toDropdownData(ROOMS)}
+                    data={toDropdownData(DAYS)}
                     labelField="label"
                     valueField="value"
-                    placeholder="Select Room"
-                    value={sched.room}
-                    onChange={(item) => updateSchedule(index, "room", item.value)}
+                    placeholder="Select Day"
+                    value={sched.day}
+                    onChange={(item) => updateSchedule(index, "day", item.value)}
                     renderLeftIcon={() => (
-                      <AntDesign name="home" size={16} color="#555" style={styles.icon} />
+                      <AntDesign name="calendar" size={16} color="#555" style={styles.icon} />
                     )}
                   />
-                )}
+
+                  <View style={styles.row}>
+                    <Dropdown
+                      style={[styles.dropdown, { flex: 1, marginRight: 5 }]}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      data={toDropdownData(TIMES)}
+                      labelField="label"
+                      valueField="value"
+                      placeholder="Start Time"
+                      value={sched.startTime}
+                      onChange={(item) => updateSchedule(index, "startTime", item.value)}
+                    />
+                    <Dropdown
+                      style={[styles.dropdown, { flex: 1, marginLeft: 5 }]}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      data={toDropdownData(TIMES)}
+                      labelField="label"
+                      valueField="value"
+                      placeholder="End Time"
+                      value={sched.endTime}
+                      onChange={(item) => updateSchedule(index, "endTime", item.value)}
+                    />
+                  </View>
+
+                  {dutyType !== "Attendance Checker" && (
+                    <Dropdown
+                      style={styles.dropdown}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      data={toDropdownData(ROOMS)}
+                      labelField="label"
+                      valueField="value"
+                      placeholder="Select Room"
+                      value={sched.room}
+                      onChange={(item) => updateSchedule(index, "room", item.value)}
+                      renderLeftIcon={() => (
+                        <AntDesign name="home" size={16} color="#555" style={styles.icon} />
+                      )}
+                    />
+                  )}
+                </View>
+              ))}
+
+              <TouchableOpacity onPress={addSchedule} style={styles.addScheduleBtn}>
+                <Text style={styles.addScheduleText}>+ Add Another Schedule</Text>
+              </TouchableOpacity>
+
+              <View style={styles.btnRow}>
+                <TouchableOpacity
+                  style={[styles.saveBtn, !isFormComplete && { backgroundColor: "gray" }]}
+                  onPress={handleSave}
+                  disabled={!isFormComplete}
+                >
+                  <Text style={styles.btnText}>{isEditing ? "Update" : "Assigning Duty"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+                  <Text style={styles.btnText}>Cancel</Text>
+                </TouchableOpacity>
               </View>
-            ))}
-
-            <TouchableOpacity onPress={addSchedule} style={styles.addScheduleBtn}>
-              <Text style={styles.addScheduleText}>+ Add Another Schedule</Text>
-            </TouchableOpacity>
-
-            {/* Buttons */}
-            <View style={styles.btnRow}>
-              <TouchableOpacity
-                style={[styles.saveBtn, !isFormComplete && { backgroundColor: "gray" }]}
-                onPress={handleSave}
-                disabled={!isFormComplete}
-              >
-                <Text style={styles.btnText}>{isEditing ? "Update" : "Save"}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-                <Text style={styles.btnText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+            </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
-     {/* 🎉 Success Modal */}
-  
-<Modal visible={successModalVisible} transparent animationType="fade">
-  <View style={styles.successOverlay}>
-    {/* Confetti should be at overlay level, not inside box */}
-    <ConfettiCannon
-      count={150}
-      origin={{ x: -10, y: 0 }}
-      fadeOut={true}
-    />
+      </Modal>
 
-    <View style={styles.successBox}>
-      <TouchableOpacity style={styles.closeIcon} onPress={closeSuccessModal}>
-        <AntDesign name="close" size={22} color="#333" />
-      </TouchableOpacity>
-      
-      <Text style={styles.successText}>✅ Successfully Added New Scholar</Text>
-    </View>
-  </View>
-</Modal>
-
+      <Modal visible={successModalVisible} transparent animationType="fade">
+        <View style={styles.successOverlay}>
+          <ConfettiCannon
+            count={150}
+            origin={{ x: -10, y: 0 }}
+            fadeOut={true}
+          />
+          <View style={styles.successBox}>
+            <TouchableOpacity style={styles.closeIcon} onPress={closeSuccessModal}>
+              <AntDesign name="close" size={22} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.successText}>✅ Successfully Added New Scholar</Text>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 };
@@ -378,7 +390,6 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: "green", padding: 10, borderRadius: 8, flex: 1 },
   cancelBtn: { backgroundColor: "red", padding: 10, borderRadius: 8, flex: 1 },
   btnText: { color: "#fff", textAlign: "center", fontWeight: "600" },
- // ✅ Success Modal styles
   successOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -402,6 +413,5 @@ const styles = StyleSheet.create({
   },
   closeIcon: { position: "absolute", top: 10, right: 10 },
 });
-
 
 export default ScholarDutyFormModal;
