@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
+const mongoose = require("mongoose"); // Add mongoose at the top
 
 router.get("/", async (req, res) => {
   try {
@@ -100,5 +101,5 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-const mongoose = require("mongoose"); // Add mongoose at the top
+
 module.exports = router;

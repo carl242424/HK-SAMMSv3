@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       username: id.toString(),
-      employeeId: userRole === 'admin' ? id.toString() : null, // ✅ null for checker/facilitator
+      employeeId: userRole === 'admin' ? id.toString() : undefined, // ✅ null for checker/facilitator
       email,
       password: hashedPassword,
       role: userRole,
