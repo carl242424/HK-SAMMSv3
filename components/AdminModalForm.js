@@ -93,14 +93,14 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
               onChangeText={(text) => {
                 let cleaned = text.replace(/\D/g, "");
                 let formatted = cleaned;
-                if (cleaned.length > 2) {
-                  formatted = cleaned.slice(0, 2) + "-" + cleaned.slice(2);
+                if (cleaned.length > 3) {
+                  formatted = cleaned.slice(0, 3) + "-" + cleaned.slice(3);
                 }
                 if (cleaned.length > 6) {
                   formatted = formatted.slice(0, 7) + "-" + cleaned.slice(6);
                 }
-                if (cleaned.length > 12) {
-                  formatted = formatted.slice(0, 13);
+                if (cleaned.length > 9) {
+                  formatted = formatted.slice(0, 11);
                 }
                 setEmployeeId(formatted);
               }}

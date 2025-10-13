@@ -8,8 +8,8 @@ router.get("/", async (req, res) => {
     const users = await User.find({ role: "admin" }).select('_id employeeId username email role status'); // Explicitly select fields
     console.log("Raw users from DB:", users); // Debug log to check raw data
     const formattedUsers = users.map(u => ({
-      _id: u._id, // Use _id as per MongoDB
-      employeeId: u.employeeId, // Ensure employeeId is included
+      _id: u._id,
+      employeeId: u.employeeId,
       username: u.username,
       email: u.email,
       role: u.role,
@@ -26,7 +26,7 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const { username, employeeId, password, email, role, status } = req.body;
-    console.log("Received data:", req.body); // Debug log
+    console.log("Received data:", req.body);
 
     if (!username || !password || !email || !role || !employeeId) {
       return res.status(400).json({ message: "All fields are required" });
@@ -53,7 +53,7 @@ router.post("/", async (req, res) => {
     });
 
     const savedUser = await newUser.save();
-    console.log("Saved user:", savedUser); // Debug log
+    console.log("Saved user:", savedUser);
 
     res.status(201).json({
       _id: savedUser._id,
@@ -73,13 +73,17 @@ router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    console.log("Update data:", updates); // Debug log
+    console.log("Update data for id:", id, updates); // Debug log
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
 
     if (updates.password) {
       updates.password = await bcrypt.hash(updates.password, 10);
     }
 
-    const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true });
+    const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     if (!updatedUser) return res.status(404).json({ message: "User not found" });
 
     res.status(200).json({
@@ -92,8 +96,9 @@ router.put("/:id", async (req, res) => {
     });
   } catch (err) {
     console.error("Error updating user:", err);
-    res.status(500).json({ message: "Failed to update user" });
+    res.status(500).json({ message: err.message || "Failed to update user" });
   }
 });
 
+const mongoose = require("mongoose"); // Add mongoose at the top
 module.exports = router;

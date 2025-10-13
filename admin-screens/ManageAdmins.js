@@ -59,9 +59,9 @@ export default function ManageAdmins() {
       let response;
       if (isEditing && editIndex !== null) {
         const existing = admins[editIndex];
-        response = await axios.put(`${API_URL}/${existing.employeeId}`, payload);
+        response = await axios.put(`${API_URL}/${existing._id}`, payload);
         const updated = [...admins];
-        updated[editIndex] = { ...existing, ...payload, employeeId: existing.employeeId }; // Ensure _id is preserved
+        updated[editIndex] = { ...existing, ...payload, _id: existing._id }; // Ensure _id is preserved
         setAdmins(updated);
       } else {
         response = await axios.post(API_URL, payload);
@@ -79,21 +79,33 @@ export default function ManageAdmins() {
   const disableAdmin = async (index) => {
     try {
       const admin = admins[index];
-      const updatedUser = await axios.put(`${API_URL}/${admin.employeeId}`, { ...admin, status: "Inactive" });
+      if (!admin || !admin._id) {
+        console.error("Invalid admin or missing _id:", admin);
+        Alert.alert("Error", "Invalid admin data. Please refresh and try again.");
+        return;
+      }
+      console.log("Disabling admin with _id:", admin._id); // Debug log
+      const updatedUser = await axios.put(`${API_URL}/${admin._id}`, { ...admin, status: "Inactive" });
 
       const updated = [...admins];
       updated[index] = updatedUser.data;
       setAdmins(updated);
     } catch (error) {
-      console.error("Error disabling admin:", error);
-      Alert.alert("Error", "Failed to disable admin.");
+      console.error("Error disabling admin:", error.response?.data || error);
+      Alert.alert("Error", error.response?.data?.message || "Failed to disable admin.");
     }
   };
 
   const reactivateAdmin = async (index) => {
     try {
       const admin = admins[index];
-      const updatedUser = await axios.put(`${API_URL}/${admin.employeeId}`, { ...admin, status: "Active" });
+      if (!admin || !admin._id) {
+        console.error("Invalid admin or missing _id:", admin);
+        Alert.alert("Error", "Invalid admin data. Please refresh and try again.");
+        return;
+      }
+      console.log("Reactivating admin with _id:", admin._id); // Debug log
+      const updatedUser = await axios.put(`${API_URL}/${admin._id}`, { ...admin, status: "Active" });
 
       const updated = [...admins];
       updated[index] = updatedUser.data;
