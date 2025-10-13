@@ -12,29 +12,20 @@ import {
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import AntDesign from "@expo/vector-icons/AntDesign";
-import ConfettiCannon from "react-native-confetti-cannon"; 
-import { Ionicons } from "@expo/vector-icons";
-
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const TIMES = [
-  "7:00 AM","7:30 AM","8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM",
-  "11:00 AM","11:30 AM","12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM",
-  "3:00 PM","3:30 PM","4:00 PM","4:30 PM","5:00 PM"
-];
-const ROOMS = [
-  "201","202","CL1","CL2","208","209","301","302","304","305","307","308","309",
-  "401","402","403","404","405","CL3","CL4","408","409"
-];
+import ConfettiCannon from "react-native-confetti-cannon";
 
 const ScholarDutyFormModal = ({
   visible,
   onClose,
   onSave,
   initialData = null,
-  onIdChange, // Prop from DutyManagement to trigger auto-fill
+  onIdChange,
   YEARS,
   COURSES,
   DUTY_TYPES,
+  DAYS,
+  TIMES,
+  ROOMS,
 }) => {
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
@@ -45,19 +36,20 @@ const ScholarDutyFormModal = ({
   const [successModalVisible, setSuccessModalVisible] = useState(false);
 
   useEffect(() => {
-    if (visible) {
-      console.log("Modal opened with initialData:", initialData); // Log initial data
-      console.log("isEditing value:", !!initialData); // Log isEditing value
-      setStudentName(initialData?.name || "");
-      setStudentId(initialData?.id || "");
-      setYear(initialData?.year || null);
-      setCourse(initialData?.course || null);
-      setDutyType(initialData?.dutyType || null); // Sync with initialData.dutyType
-      setSchedules(initialData?.schedules || [{ day: "", startTime: "", endTime: "", room: "" }]);
-    }
-  }, [visible, initialData]);
+    console.log("useEffect triggered with initialData:", initialData);
+    setStudentName(initialData?.name || "");
+    setStudentId(initialData?.id || "");
+    setYear(initialData?.year || null);
+    setCourse(initialData?.course || null);
+    setDutyType(initialData?.dutyType || null);
+    // Limit to 2 schedules for initial data
+    const initialSchedules = initialData?.schedules?.length > 0 
+      ? initialData.schedules.slice(0, 2) 
+      : [{ day: "", startTime: "", endTime: "", room: "" }];
+    setSchedules(initialSchedules);
+    console.log("Initialized schedules:", initialSchedules);
+  }, [initialData]);
 
-  // Handle ID change to trigger auto-fill via parent
   const handleIdChange = (text) => {
     console.log("ID input changed:", text);
     let formatted = text.replace(/[^0-9-]/g, "");
@@ -66,17 +58,16 @@ const ScholarDutyFormModal = ({
     setStudentId(formatted);
     if (onIdChange && formatted.length === 14) {
       console.log("Triggering onIdChange with:", formatted);
-      onIdChange(formatted); // Trigger parent fetch when fully formatted
+      onIdChange(formatted);
     }
   };
 
-  // Log dutyType when changed
   const handleDutyTypeChange = (item) => {
     console.log("Duty type changed to:", item.value);
     setDutyType(item.value);
   };
 
-  const isEditing = !!initialData;
+  const isEditing = !!initialData?.id;
 
   const isFormComplete =
     studentName &&
@@ -90,8 +81,81 @@ const ScholarDutyFormModal = ({
         : s.day && s.startTime && s.endTime && s.room
     );
 
+  const doTimeRangesOverlap = (day1, start1, end1, day2, start2, end2) => {
+    console.log(`In-modal overlap check: ${day1} ${start1}-${end1} vs ${day2} ${start2}-${end2}`);
+    if (day1 !== day2) {
+      console.log("No overlap: different days");
+      return false;
+    }
+    const startIndex1 = TIMES.indexOf(start1);
+    const endIndex1 = TIMES.indexOf(end1);
+    const startIndex2 = TIMES.indexOf(start2);
+    const endIndex2 = TIMES.indexOf(end2);
+    if (startIndex1 === -1 || endIndex1 === -1 || startIndex2 === -1 || endIndex2 === -1) {
+      console.log("No overlap: invalid time indices", { startIndex1, endIndex1, startIndex2, endIndex2 });
+      return false;
+    }
+    const hasOverlap = startIndex1 < endIndex2 && startIndex2 < endIndex1;
+    console.log(`In-modal overlap result: ${hasOverlap}`);
+    return hasOverlap;
+  };
+
+  const addSchedule = () => {
+    if (schedules.length >= 2) {
+      console.log("Cannot add schedule: maximum of 2 schedules reached");
+      Alert.alert("Schedule Limit", "A maximum of 2 schedules is allowed.");
+      return;
+    }
+    const newSchedule = { day: "", startTime: "", endTime: "", room: "" };
+    console.log("Adding new schedule:", newSchedule);
+    setSchedules([...schedules, newSchedule]);
+  };
+
+  const updateSchedule = (index, field, value) => {
+    console.log(`Updating schedule ${index + 1}, field: ${field}, value: ${value}`);
+    const updated = [...schedules];
+    updated[index][field] = value;
+    // Check for overlaps when updating day, startTime, or endTime
+    if (field === "day" || field === "startTime" || field === "endTime") {
+      const currentSchedule = updated[index];
+      if (currentSchedule.day && currentSchedule.startTime && currentSchedule.endTime) {
+        console.log("Checking for in-modal overlaps with:", currentSchedule);
+        const hasOverlap = updated.some((sched, i) => {
+          if (i === index) {
+            console.log("Skipping same schedule index:", i);
+            return false;
+          }
+          if (!sched.day || !sched.startTime || !sched.endTime) {
+            console.log("Skipping incomplete schedule:", sched);
+            return false;
+          }
+          const overlap = doTimeRangesOverlap(
+            currentSchedule.day,
+            currentSchedule.startTime,
+            currentSchedule.endTime,
+            sched.day,
+            sched.startTime,
+            sched.endTime
+          );
+          if (overlap) {
+            console.log(`Overlap detected with schedule ${i + 1}:`, sched);
+          }
+          return overlap;
+        });
+        if (hasOverlap) {
+          console.log("Showing overlap alert and resetting field");
+          Alert.alert("Schedule Conflict", "The selected schedule overlaps with another. Please choose a different time slot.");
+          updated[index][field] = ""; // Reset the field to prevent overlap
+        }
+      } else {
+        console.log("Schedule incomplete, skipping overlap check:", currentSchedule);
+      }
+    }
+    setSchedules(updated);
+  };
+
   const handleSave = async () => {
-    console.log("handleSave called");
+    console.log("handleSave called with schedules:", schedules);
     if (!isFormComplete) {
       console.log("Form incomplete, showing alert");
       return Alert.alert("Missing Info", "Please fill in all fields.");
@@ -102,15 +166,17 @@ const ScholarDutyFormModal = ({
       const endIndex = TIMES.indexOf(s.endTime);
 
       if (startIndex === -1 || endIndex === -1) {
+        console.log("Invalid time selection:", s);
         return Alert.alert("Invalid Selection", "Please select valid start and end times.");
       }
 
       if (startIndex >= endIndex) {
+        console.log("Invalid time range:", s);
         return Alert.alert("Invalid Time", "End time must be later than Start time.");
       }
 
-      const diff = endIndex - startIndex;
-      if (diff < 2) {
+      if (endIndex - startIndex < 2) {
+        console.log("Duty duration too short:", s);
         return Alert.alert("Invalid Duty Duration", "1hr or above allowed duty hours.");
       }
     }
@@ -134,6 +200,9 @@ const ScholarDutyFormModal = ({
       if (error.message === "Unknown account. Please register first.") {
         console.log("Showing account error alert");
         Alert.alert("Account Error", "Unknown account. Please register first.");
+      } else if (error.message === "The selected schedule overlaps with another. Please choose a different time slot.") {
+        console.log("Showing database overlap alert");
+        Alert.alert("Schedule Conflict", error.message);
       } else {
         console.log("Showing generic save error alert");
         Alert.alert("Save Error", `Failed to save duty: ${error.message || "Please check the data."}`);
@@ -145,16 +214,6 @@ const ScholarDutyFormModal = ({
     setSuccessModalVisible(false);
   };
 
-  const addSchedule = () => {
-    setSchedules([...schedules, { day: "", startTime: "", endTime: "", room: "" }]);
-  };
-
-  const updateSchedule = (index, field, value) => {
-    const updated = [...schedules];
-    updated[index][field] = value;
-    setSchedules(updated);
-  };
-
   const toDropdownData = (arr) => arr.map((v) => ({ label: v, value: v }));
 
   return (
@@ -163,7 +222,7 @@ const ScholarDutyFormModal = ({
         <View style={styles.overlay}>
           <View style={styles.modalBox}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-              <Text style={styles.title}>{isEditing ? "Edit Scholar Duty" : "Assign Scholar Duty"}</Text>
+              <Text style={styles.title}>Assign Scholar Duty</Text>
 
               <Text style={styles.label}>Student Name</Text>
               <TextInput
@@ -180,7 +239,7 @@ const ScholarDutyFormModal = ({
                 placeholderTextColor="#888"
                 value={studentId}
                 keyboardType="numeric"
-                onChangeText={handleIdChange} // Use the custom handler
+                onChangeText={handleIdChange}
                 maxLength={14}
                 style={styles.input}
               />
@@ -226,8 +285,8 @@ const ScholarDutyFormModal = ({
                 labelField="label"
                 valueField="value"
                 placeholder="Select Duty Type"
-                value={dutyType} // Use local state
-                onChange={handleDutyTypeChange} // Use custom handler for logging
+                value={dutyType}
+                onChange={handleDutyTypeChange}
                 renderLeftIcon={() => (
                   <AntDesign name="idcard" size={16} color="#555" style={styles.icon} />
                 )}
@@ -297,7 +356,11 @@ const ScholarDutyFormModal = ({
                 </View>
               ))}
 
-              <TouchableOpacity onPress={addSchedule} style={styles.addScheduleBtn}>
+              <TouchableOpacity 
+                onPress={addSchedule} 
+                style={[styles.addScheduleBtn, schedules.length >= 2 && styles.disabledBtn]}
+                disabled={schedules.length >= 2}
+              >
                 <Text style={styles.addScheduleText}>+ Add Another Schedule</Text>
               </TouchableOpacity>
 
@@ -307,7 +370,7 @@ const ScholarDutyFormModal = ({
                   onPress={handleSave}
                   disabled={!isFormComplete}
                 >
-                  <Text style={styles.btnText}>{isEditing ? "Update" : "Assigning Duty"}</Text>
+                  <Text style={styles.btnText}>Assigning Duty</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
                   <Text style={styles.btnText}>Cancel</Text>
@@ -329,7 +392,9 @@ const ScholarDutyFormModal = ({
             <TouchableOpacity style={styles.closeIcon} onPress={closeSuccessModal}>
               <AntDesign name="close" size={22} color="#333" />
             </TouchableOpacity>
-            <Text style={styles.successText}>✅ Successfully Added New Scholar</Text>
+            <Text style={styles.successText}>
+              ✅ Successfully {isEditing ? "Updated" : "Added New"} Scholar Duty
+            </Text>
           </View>
         </View>
       </Modal>
@@ -380,7 +445,16 @@ const styles = StyleSheet.create({
   },
   scheduleTitle: { fontWeight: "600", marginBottom: 8, fontSize: 13 },
   row: { flexDirection: "row", justifyContent: "space-between" },
-  addScheduleBtn: { backgroundColor: "#0078d7", padding: 10, borderRadius: 8, marginVertical: 10 },
+  addScheduleBtn: { 
+    backgroundColor: "#0078d7", 
+    padding: 10, 
+    borderRadius: 8, 
+    marginVertical: 10 
+  },
+  disabledBtn: {
+    backgroundColor: "gray",
+    opacity: 0.5,
+  },
   addScheduleText: { color: "white", fontWeight: "600", textAlign: "center" },
   btnRow: {
     flexDirection: Platform.OS === "web" ? "row" : "column",
