@@ -7,8 +7,8 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import ScholarDutyFormModal from "../components/ScholarDutyFormModal";
-import ScholarDutyQR from "../components/ScholarDutyQR";
+import ScholarDutyFormModal from "../components/QRDutyFormModal";
+import ScholarDutyQR from "../components/QRDutyQR.js";
 
 const PRIMARY_COLOR = "#00A4DF";
 
@@ -17,14 +17,29 @@ export default function GenerateQR() {
   const [searchQuery, setSearchQuery] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Save new duty record
   const saveQrDuty = (duty) => {
-    // Optional: attach a unique ID
-    const newDuty = { ...duty, id: duty.id || `DUTY-${Date.now()}` };
-    setQrDuties([...qrDuties, newDuty]);
+    const recordId = duty.recordId || Date.now().toString(); // Generate recordId if not provided
+    const newDuty = {
+      ...duty,
+      recordId, // Ensure recordId is set
+      id: duty.id || recordId, // Ensure id matches recordId if not provided
+    };
+    console.log("Saving new duty:", JSON.stringify(newDuty, null, 2)); // Debug
+    setQrDuties((prev) => [...prev, newDuty]);
     setModalVisible(false);
   };
 
+  const removeQrDuty = (recordId) => {
+    console.log("removeQrDuty called with recordId:", recordId); // Debug
+    console.log("Current duties:", JSON.stringify(qrDuties, null, 2)); // Debug
+    setQrDuties((prev) => {
+      const updatedDuties = prev.filter((duty) => duty.recordId !== recordId);
+      console.log("Updated duties after removal:", JSON.stringify(updatedDuties, null, 2)); // Debug
+      return [...updatedDuties]; // Create new array to ensure state update
+    });
+  };
+
+  // Filter for search
   const filteredQr = qrDuties.filter(
     (d) =>
       d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -38,7 +53,10 @@ export default function GenerateQR() {
         <Text style={styles.title}>QR Code Generator</Text>
         <TouchableOpacity
           style={styles.createBtn}
-          onPress={() => setModalVisible(true)}
+          onPress={() => {
+            console.log("Create Duty QR button pressed"); // Debug
+            setModalVisible(true);
+          }}
         >
           <Text style={styles.btnText}>+ Create Duty QR</Text>
         </TouchableOpacity>
@@ -59,7 +77,19 @@ export default function GenerateQR() {
         </Text>
 
         {filteredQr.length > 0 ? (
-          filteredQr.map((duty, i) => <ScholarDutyQR key={i} duty={duty} />)
+          filteredQr.map((duty, i) => {
+            if (!duty.recordId) {
+              console.warn("Duty missing recordId:", JSON.stringify(duty, null, 2)); // Debug
+            }
+            console.log("Rendering ScholarDutyQR with recordId:", duty.recordId); // Debug
+            return (
+              <ScholarDutyQR
+                key={duty.recordId || `fallback-${i}`} // Fallback key
+                duty={duty}
+                onRemove={removeQrDuty}
+              />
+            );
+          })
         ) : (
           <Text style={{ textAlign: "center", marginTop: 20, color: "#777" }}>
             No QR duties created yet.
@@ -67,7 +97,7 @@ export default function GenerateQR() {
         )}
       </ScrollView>
 
-      {/* Form */}
+      {/* Form Modal */}
       <ScholarDutyFormModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -91,22 +121,52 @@ export default function GenerateQR() {
         DAYS={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
         TIMES={[
           "7:00 AM",
+          "7:30 AM",
           "8:00 AM",
+          "8:30 AM",
           "9:00 AM",
+          "9:30 AM",
           "10:00 AM",
+          "10:30 AM",
           "11:00 AM",
+          "11:30 AM",
           "12:00 PM",
+          "12:30 PM",
           "1:00 PM",
+          "1:30 PM",
           "2:00 PM",
+          "2:30 PM",
           "3:00 PM",
+          "3:30 PM",
           "4:00 PM",
+          "4:30 PM",
           "5:00 PM",
+          "5:30 PM",
+          "6:00 PM",
         ]}
         ROOMS={[
-          "201", "202", "CL1", "CL2", "208", "209",
-          "301", "302", "304", "305", "307", "308", "309",
-          "401", "402", "403", "404", "405", "CL3", "CL4",
-          "408", "409",
+          "201",
+          "202",
+          "CL1",
+          "CL2",
+          "208",
+          "209",
+          "301",
+          "302",
+          "304",
+          "305",
+          "307",
+          "308",
+          "309",
+          "401",
+          "402",
+          "403",
+          "404",
+          "405",
+          "CL3",
+          "CL4",
+          "408",
+          "409",
         ]}
       />
     </View>

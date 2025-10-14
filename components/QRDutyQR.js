@@ -6,18 +6,19 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   Modal,
+  Alert,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 
-export default function ScholarDutyQR({ duty, onRemove }) {
-  const [status, setStatus] = useState("Active");
+export default function QRDutyQR({ duty, onRemove }) {
+  const [status, setStatus] = useState(duty.status || "Active");
   const [qrCodeValue, setQrCodeValue] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const { width } = useWindowDimensions();
+  console.log("Screen width:", width); // Debug screen size
 
-  // ✅ Auto-expire for Attendance Checker
   useEffect(() => {
     if (duty.duty === "Attendance Checker" && duty.schedules?.length > 0) {
       const checkExpiry = () => {
@@ -25,7 +26,6 @@ export default function ScholarDutyQR({ duty, onRemove }) {
         let expired = false;
 
         duty.schedules.forEach((s) => {
-          const end = new Date();
           if (!s.endTime) return;
 
           const [time, modifier] = s.endTime.split(" ");
@@ -33,8 +33,10 @@ export default function ScholarDutyQR({ duty, onRemove }) {
           if (modifier === "PM" && hours !== 12) hours += 12;
           if (modifier === "AM" && hours === 12) hours = 0;
 
-          end.setHours(hours, minutes);
+          const end = new Date();
+          end.setHours(hours, minutes, 0, 0);
           end.setMinutes(end.getMinutes() + 60);
+
           if (now > end) expired = true;
         });
 
@@ -47,7 +49,6 @@ export default function ScholarDutyQR({ duty, onRemove }) {
     }
   }, [duty]);
 
-  // ✅ Generate unique hash-based QR content
   const generateUniqueCode = async () => {
     const rawData = `${duty.id}-${duty.name}-${duty.duty}-${Date.now()}`;
     const hash = await Crypto.digestStringAsync(
@@ -61,7 +62,6 @@ export default function ScholarDutyQR({ duty, onRemove }) {
     (async () => {
       const code = await generateUniqueCode();
 
-      // Embed both the code and all duty details in the QR content
       const qrPayload = {
         qrCode: code,
         id: duty.id,
@@ -78,11 +78,24 @@ export default function ScholarDutyQR({ duty, onRemove }) {
     })();
   }, [duty, status]);
 
+  const handleRemove = () => {
+    console.log("Remove button pressed for duty:", JSON.stringify(duty, null, 2)); // Debug
+    const key = duty.recordId;
+
+    if (!key) {
+      console.error("Error: Duty has no recordId:", duty); // Debug
+      Alert.alert("Error", "This duty cannot be removed because it has no record ID.");
+      return;
+    }
+
+    console.log("Calling onRemove with key:", key); // Debug
+    onRemove?.(key);
+  };
+
   const isSmallScreen = width < 400;
 
   return (
     <>
-      {/* Main Card */}
       <View style={styles.card}>
         <TouchableOpacity onPress={() => setModalVisible(true)}>
           <View style={styles.qrContainer}>
@@ -101,19 +114,22 @@ export default function ScholarDutyQR({ duty, onRemove }) {
             ]}
           >
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>{duty.duty}</Text>
+              <Text style={styles.title}>{duty.duty || "Unknown Duty"}</Text>
               <Text style={styles.subtext}>
-                {duty.name} ({duty.id})
+                {duty.name || "N/A"} ({duty.id || "N/A"})
               </Text>
               <Text>
-                {duty.year} • {duty.course}
+                {duty.year || "N/A"} • {duty.course || "N/A"}
               </Text>
             </View>
 
             {!isSmallScreen && (
               <TouchableOpacity
                 style={styles.removeButton}
-                onPress={() => onRemove && onRemove(duty.id)}
+                onPress={() => {
+                  console.log("Large screen Remove button pressed"); // Debug
+                  handleRemove();
+                }}
               >
                 <Ionicons name="trash-outline" size={18} color="white" />
                 <Text style={styles.removeText}>Remove</Text>
@@ -123,16 +139,21 @@ export default function ScholarDutyQR({ duty, onRemove }) {
 
           <View style={styles.scheduleContainer}>
             <Text style={styles.scheduleHeader}>Schedules:</Text>
-            {duty.schedules.map((s, i) => (
-              <View key={i} style={styles.scheduleItem}>
-                <Text>
-                  {s.day} — {s.startTime} - {s.endTime}
-                </Text>
-                {s.room ? (
-                  <Text style={styles.roomText}>Room: {s.room}</Text>
-                ) : null}
-              </View>
-            ))}
+            {duty.schedules?.length > 0 ? (
+              duty.schedules.map((s, i) => (
+                <View key={i} style={styles.scheduleItem}>
+                  <Text>
+                    {s.day || "N/A"} — {s.startTime || "N/A"} -{" "}
+                    {s.endTime || "N/A"}
+                  </Text>
+                  {s.room ? (
+                    <Text style={styles.roomText}>Room: {s.room}</Text>
+                  ) : null}
+                </View>
+              ))
+            ) : (
+              <Text style={styles.roomText}>No schedules assigned</Text>
+            )}
           </View>
 
           <Text
@@ -147,7 +168,10 @@ export default function ScholarDutyQR({ duty, onRemove }) {
           {isSmallScreen && (
             <TouchableOpacity
               style={[styles.removeButton, { alignSelf: "flex-start", marginTop: 8 }]}
-              onPress={() => onRemove && onRemove(duty.id)}
+              onPress={() => {
+                console.log("Small screen Remove button pressed"); // Debug
+                handleRemove();
+              }}
             >
               <Ionicons name="trash-outline" size={18} color="white" />
               <Text style={styles.removeText}>Remove</Text>
@@ -156,7 +180,6 @@ export default function ScholarDutyQR({ duty, onRemove }) {
         </View>
       </View>
 
-      {/* Modal for QR Popup */}
       <Modal
         visible={modalVisible}
         transparent
@@ -216,6 +239,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 5,
+    zIndex: 10,
   },
   removeText: {
     color: "white",
