@@ -21,22 +21,20 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
 
   useEffect(() => {
     if (visible) {
-      setAdminName(initialData?.name || "");
-      setEmployeeId(initialData?.id || "");
+      setAdminName(initialData?.username || "");
+      setEmployeeId(initialData?.employeeId || "");
       setEmail(initialData?.email || "");
       setPassword(initialData?.password || "");
     }
   }, [visible, initialData]);
 
   const isEditing = !!initialData;
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!adminName || !employeeId || !email || !password) {
       Alert.alert("Missing Info", "Please fill in all fields.");
       return;
     }
 
-    // ✅ Email must end with "au@phinmaed.com"
     const emailRegex = /^[a-zA-Z0-9._%+-]+\.au@phinmaed\.com$/;
     if (!emailRegex.test(email)) {
       Alert.alert(
@@ -46,27 +44,29 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
       return;
     }
 
-    // ✅ Password must be at least 8 chars, with 1 uppercase, 1 lowercase, 1 number, and 1 special character
-  const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  if (!passwordRegex.test(password)) {
-    Alert.alert(
-      "Weak Password",
-      "Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character."
-    );
-    return;
-  }
-  
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      Alert.alert(
+        "Weak Password",
+        "Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character."
+      );
+      return;
+    }
+
     const adminData = {
       name: adminName,
-      id: employeeId,
+      employeeId: employeeId,
       email,
       password,
-      status: "Active",
     };
 
-    onSave(adminData, isEditing);
-    onClose();
+    try {
+      await onSave(adminData, isEditing);
+      onClose();
+    } catch (error) {
+      Alert.alert("Error", "Failed to save admin.");
+    }
   };
 
   return (
@@ -78,7 +78,6 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
               {isEditing ? "Edit Admin Account" : "Create Admin Account"}
             </Text>
 
-            {/* Admin Name */}
             <Text style={styles.label}>Admin Name</Text>
             <TextInput
               placeholder="Enter Admin Name"
@@ -87,16 +86,29 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
               style={styles.input}
             />
 
-            {/* Employee ID */}
             <Text style={styles.label}>Employee ID</Text>
             <TextInput
-              placeholder="Enter Employee ID"
+              placeholder="Enter Employee ID (e.g., 12-3456-789012)"
               value={employeeId}
-              onChangeText={setEmployeeId}
+              onChangeText={(text) => {
+                let cleaned = text.replace(/\D/g, "");
+                let formatted = cleaned;
+                if (cleaned.length > 3) {
+                  formatted = cleaned.slice(0, 3) + "-" + cleaned.slice(3);
+                }
+                if (cleaned.length > 6) {
+                  formatted = formatted.slice(0, 7) + "-" + cleaned.slice(6);
+                }
+                if (cleaned.length > 9) {
+                  formatted = formatted.slice(0, 11);
+                }
+                setEmployeeId(formatted);
+              }}
+              keyboardType="numeric"
+              maxLength={15}
               style={styles.input}
             />
 
-            {/* Email */}
             <Text style={styles.label}>Email</Text>
             <TextInput
               placeholder="juan.delacruz.au@phinmaed.com"
@@ -107,7 +119,6 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
               autoCapitalize="none"
             />
 
-            {/* Password */}
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordInputContainer}>
               <TextInput
@@ -129,7 +140,6 @@ const AdminModalForm = ({ visible, onClose, onSave, initialData = null }) => {
               </TouchableOpacity>
             </View>
 
-            {/* Buttons */}
             <View style={styles.row}>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
                 <Text style={styles.btnText}>

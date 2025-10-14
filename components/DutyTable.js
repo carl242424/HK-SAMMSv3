@@ -40,21 +40,13 @@ const DutyTable = ({ duties = [], onEdit, onView, onToggleStatus }) => {
         {duties.length > 0 ? (
           duties.map((duty, index) => (
             <View key={index} style={styles.row}>
-              <Text style={styles.cell}>{duty.studentName || "N/A"}</Text>
-              <Text style={styles.cell}>{duty.duty || "N/A"}</Text>
-              <Text style={styles.cell}>{duty.schedules?.[0]?.day || "N/A"}</Text>
+              <Text style={styles.cell}>{duty.name || "N/A"}</Text>
+              <Text style={styles.cell}>{duty.dutyType || "N/A"}</Text>
+              <Text style={styles.cell}>{duty.day || "N/A"}</Text>
+              <Text style={styles.cell}>{duty.time || "N/A"}</Text>
               <Text style={styles.cell}>
-                {duty.schedules?.[0]
-                  ? `${duty.schedules[0].startTime || ""} - ${
-                      duty.schedules[0].endTime || ""
-                    }`
-                  : "N/A"}
+                {duty.room || (duty.dutyType === "Attendance Checker" ? "—" : "N/A")}
               </Text>
-              <Text style={styles.cell}>
-                {duty.schedules?.[0]?.room ||
-                  (duty.duty === "Attendance Checker" ? "—" : "N/A")}
-              </Text>
-
               <Text
                 style={[
                   styles.cell,

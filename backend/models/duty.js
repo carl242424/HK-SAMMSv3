@@ -8,7 +8,7 @@ const dutySchema = new mongoose.Schema({
   dutyType: { type: String, required: true },
   day: { type: String, required: true },
   time: { type: String, required: true },
-  room: { type: String, required: true },
+  room: { type: String, },
   status: { type: String, default: "Active" },
   createdAt: { type: Date, default: Date.now },
 });
