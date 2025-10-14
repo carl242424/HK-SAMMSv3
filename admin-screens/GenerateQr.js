@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   StyleSheet,
 } from "react-native";
 import ScholarDutyFormModal from "../components/QRDutyFormModal";
-import ScholarDutyQR from "../components/QRDutyQR.js";
+import ScholarDutyQR from "../components/QRDutyQR";
+import { fetchDuties } from "../api";
 
 const PRIMARY_COLOR = "#00A4DF";
 
@@ -16,30 +17,47 @@ export default function GenerateQR() {
   const [qrDuties, setQrDuties] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
+  const [fetchedDuties, setFetchedDuties] = useState([]);
+
+  useEffect(() => {
+    const loadDuties = async () => {
+      const duties = await fetchDuties();
+      const transformedDuties = duties.map(duty => ({
+        ...duty,
+        schedules: [{
+          day: duty.day || "",
+          startTime: duty.time?.split(" - ")[0] || "",
+          endTime: duty.time?.split(" - ")[1] || "",
+          room: duty.room || ""
+        }]
+      }));
+      setFetchedDuties(transformedDuties);
+    };
+    loadDuties();
+  }, []);
 
   const saveQrDuty = (duty) => {
-    const recordId = duty.recordId || Date.now().toString(); // Generate recordId if not provided
+    const recordId = duty.recordId || Date.now().toString();
     const newDuty = {
       ...duty,
-      recordId, // Ensure recordId is set
-      id: duty.id || recordId, // Ensure id matches recordId if not provided
+      recordId,
+      id: duty.id || recordId,
     };
-    console.log("Saving new duty:", JSON.stringify(newDuty, null, 2)); // Debug
+    console.log("Saving new duty:", JSON.stringify(newDuty, null, 2));
     setQrDuties((prev) => [...prev, newDuty]);
     setModalVisible(false);
   };
 
   const removeQrDuty = (recordId) => {
-    console.log("removeQrDuty called with recordId:", recordId); // Debug
-    console.log("Current duties:", JSON.stringify(qrDuties, null, 2)); // Debug
+    console.log("removeQrDuty called with recordId:", recordId);
+    console.log("Current duties:", JSON.stringify(qrDuties, null, 2));
     setQrDuties((prev) => {
       const updatedDuties = prev.filter((duty) => duty.recordId !== recordId);
-      console.log("Updated duties after removal:", JSON.stringify(updatedDuties, null, 2)); // Debug
-      return [...updatedDuties]; // Create new array to ensure state update
+      console.log("Updated duties after removal:", JSON.stringify(updatedDuties, null, 2));
+      return [...updatedDuties];
     });
   };
 
-  // Filter for search
   const filteredQr = qrDuties.filter(
     (d) =>
       d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -48,13 +66,12 @@ export default function GenerateQR() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>QR Code Generator</Text>
         <TouchableOpacity
           style={styles.createBtn}
           onPress={() => {
-            console.log("Create Duty QR button pressed"); // Debug
+            console.log("Create Duty QR button pressed");
             setModalVisible(true);
           }}
         >
@@ -62,7 +79,6 @@ export default function GenerateQR() {
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
       <TextInput
         placeholder="Search by student name or ID..."
         value={searchQuery}
@@ -70,7 +86,6 @@ export default function GenerateQR() {
         style={styles.search}
       />
 
-      {/* List */}
       <ScrollView showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>
           Duty Schedule QR Codes ({filteredQr.length})
@@ -79,12 +94,12 @@ export default function GenerateQR() {
         {filteredQr.length > 0 ? (
           filteredQr.map((duty, i) => {
             if (!duty.recordId) {
-              console.warn("Duty missing recordId:", JSON.stringify(duty, null, 2)); // Debug
+              console.warn("Duty missing recordId:", JSON.stringify(duty, null, 2));
             }
-            console.log("Rendering ScholarDutyQR with recordId:", duty.recordId); // Debug
+            console.log("Rendering ScholarDutyQR with recordId:", duty.recordId);
             return (
               <ScholarDutyQR
-                key={duty.recordId || `fallback-${i}`} // Fallback key
+                key={duty.recordId || `fallback-${i}`}
                 duty={duty}
                 onRemove={removeQrDuty}
               />
@@ -97,11 +112,11 @@ export default function GenerateQR() {
         )}
       </ScrollView>
 
-      {/* Form Modal */}
       <ScholarDutyFormModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onSave={saveQrDuty}
+        fetchedDuties={fetchedDuties}
         YEARS={["1st Year", "2nd Year", "3rd Year", "4th Year"]}
         COURSES={[
           "BS ACCOUNTANCY",

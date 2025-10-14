@@ -1,35 +1,85 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native"; // Add navigation hook
 
 const PRIMARY_COLOR = "#00A4DF";
 
 export default function AdminProfile() {
-  // Example data (replace with real logged-in admin data)
-  const adminData = {
-    name: "John Doe",
-    id: "EMP001",
-    status: "Active",
-    password: "********", // don’t show real password
-  };
+  const [adminData, setAdminData] = useState({
+    name: "Loading...",
+    id: "Loading...",
+    status: "Loading...",
+    password: "********",
+  });
+  const navigation = useNavigation(); // Initialize navigation
 
-  const handleLogout = () => {
-    // Replace with real logout logic
-    console.log("Logged out");
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        console.log("Retrieved token:", token ? token.slice(0, 20) + "..." : "null");
+
+        if (!token) {
+          console.error("No token found, redirecting to login");
+          navigation.reset({ index: 0, routes: [{ name: "LoginScreen" }] });
+          return;
+        }
+
+        const response = await axios.get("http://192.168.86.139:8000/api/users/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("Profile response:", response.data);
+        const user = response.data;
+        setAdminData({
+          name: user.username,
+          id: user.employeeId || "N/A",
+          status: user.status,
+          password: "********",
+        });
+      } catch (error) {
+        console.error("Error fetching profile:", error.message, error.response?.data);
+        setAdminData({
+          name: "Error",
+          id: "Error",
+          status: "Error",
+          password: "********",
+        });
+        // Redirect to login on 401 or 404 errors
+        if (error.response?.status === 401 || error.response?.status === 404) {
+          console.error("Authentication failed, redirecting to login");
+          await AsyncStorage.removeItem("token");
+          await AsyncStorage.removeItem("role");
+          navigation.reset({ index: 0, routes: [{ name: "LoginScreen" }] });
+        }
+      }
+    };
+
+    fetchProfile();
+  }, [navigation]);
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("role");
+      console.log("Logged out successfully");
+      navigation.reset({ index: 0, routes: [{ name: "LoginScreen" }] });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Add spacing above title */}
       <Text style={styles.title}>Admin Profile</Text>
-
-      {/* Profile Card */}
       <View style={styles.profileCard}>
         <Text style={styles.label}>Name:</Text>
         <Text style={styles.value}>{adminData.name}</Text>
-
         <Text style={styles.label}>Employee ID:</Text>
         <Text style={styles.value}>{adminData.id}</Text>
-
         <Text style={styles.label}>Status:</Text>
         <Text
           style={[
@@ -39,12 +89,9 @@ export default function AdminProfile() {
         >
           {adminData.status}
         </Text>
-
         <Text style={styles.label}>Password:</Text>
         <Text style={styles.value}>{adminData.password}</Text>
       </View>
-
-      {/* Logout Button */}
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
@@ -54,16 +101,13 @@ export default function AdminProfile() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-
-  // Added marginTop for spacing above the title
   title: {
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 20,
-    marginTop: 40, // extra spacing above
+    marginTop: 40,
     textAlign: "center",
   },
-
   profileCard: {
     backgroundColor: "#f9f9f9",
     padding: 20,
@@ -75,18 +119,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
-
   label: { fontSize: 14, color: "#555", marginTop: 10 },
   value: { fontSize: 16, fontWeight: "600", color: "#333" },
-
   active: { color: "green" },
   inactive: { color: "red" },
-
   logoutBtn: {
-    backgroundColor: "#ffcccc", // light red
+    backgroundColor: "#ffcccc",
     padding: 12,
     borderRadius: 6,
     alignItems: "center",
   },
-  logoutText: { color: "#a60000", fontWeight: "600" }, // darker red text
+  logoutText: { color: "#a60000", fontWeight: "600" },
 });

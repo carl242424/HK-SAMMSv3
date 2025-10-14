@@ -17,7 +17,7 @@ export default function QRDutyQR({ duty, onRemove }) {
   const [qrCodeValue, setQrCodeValue] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const { width } = useWindowDimensions();
-  console.log("Screen width:", width); // Debug screen size
+  console.log("Screen width:", width);
 
   useEffect(() => {
     if (duty.duty === "Attendance Checker" && duty.schedules?.length > 0) {
@@ -71,7 +71,7 @@ export default function QRDutyQR({ duty, onRemove }) {
         dutyType: duty.duty,
         schedules: duty.schedules,
         status,
-        generatedAt: new Date().toISOString(),
+        generatedAt: "2025-10-14T20:29:00-07:00", // 08:29 PM PST, October 14, 2025
       };
 
       setQrCodeValue(JSON.stringify(qrPayload));
@@ -79,16 +79,16 @@ export default function QRDutyQR({ duty, onRemove }) {
   }, [duty, status]);
 
   const handleRemove = () => {
-    console.log("Remove button pressed for duty:", JSON.stringify(duty, null, 2)); // Debug
+    console.log("Remove button pressed for duty:", JSON.stringify(duty, null, 2));
     const key = duty.recordId;
 
     if (!key) {
-      console.error("Error: Duty has no recordId:", duty); // Debug
+      console.error("Error: Duty has no recordId:", duty);
       Alert.alert("Error", "This duty cannot be removed because it has no record ID.");
       return;
     }
 
-    console.log("Calling onRemove with key:", key); // Debug
+    console.log("Calling onRemove with key:", key);
     onRemove?.(key);
   };
 
@@ -127,7 +127,7 @@ export default function QRDutyQR({ duty, onRemove }) {
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => {
-                  console.log("Large screen Remove button pressed"); // Debug
+                  console.log("Large screen Remove button pressed");
                   handleRemove();
                 }}
               >
@@ -169,7 +169,7 @@ export default function QRDutyQR({ duty, onRemove }) {
             <TouchableOpacity
               style={[styles.removeButton, { alignSelf: "flex-start", marginTop: 8 }]}
               onPress={() => {
-                console.log("Small screen Remove button pressed"); // Debug
+                console.log("Small screen Remove button pressed");
                 handleRemove();
               }}
             >

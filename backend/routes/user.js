@@ -2,12 +2,65 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
+const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose"); // Add mongoose at the top
+console.log("✅ user.js routes loaded");
+// Authentication middleware
+const authMiddleware = (req, res, next) => {
+  const token = req.header("Authorization")?.replace("Bearer ", "");
 
+  if (!token) {
+    console.error("No token provided in Authorization header");
+    return res.status(401).json({ message: "No token, authorization denied" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded JWT:", decoded); // Log decoded token for debugging
+    req.user = decoded; // Sets req.user with { _id: "user_id_here" }
+    next();
+  } catch (err) {
+    console.error("Token verification failed:", err.message);
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+// Fetch logged-in user's profile
+router.get("/profile", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log("Fetching profile for userId:", userId); // Log userId
+    const user = await User.findById(userId).select('_id employeeId username email role status');
+
+    if (!user) {
+      console.error("User not found in database for ID:", userId);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.role !== "admin") {
+      console.error("Access denied for userId:", userId, "Role:", user.role);
+      return res.status(403).json({ message: "Access denied. Admin only." });
+    }
+
+    console.log("Returning profile:", user); // Log user data
+    res.status(200).json({
+      _id: user._id,
+      employeeId: user.employeeId || "N/A",
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    });
+  } catch (err) {
+    console.error("Error fetching profile:", err.message);
+    res.status(500).json({ message: "Failed to fetch profile" });
+  }
+});
+// Fetch all admin users
 router.get("/", async (req, res) => {
   try {
-    const users = await User.find({ role: "admin" }).select('_id employeeId username email role status'); // Explicitly select fields
-    console.log("Raw users from DB:", users); // Debug log to check raw data
+    const users = await User.find({ role: "admin" }).select('_id employeeId username email role status');
+    console.log("Raw users from DB:", users);
     const formattedUsers = users.map(u => ({
       _id: u._id,
       employeeId: u.employeeId,
@@ -16,7 +69,7 @@ router.get("/", async (req, res) => {
       role: u.role,
       status: u.status
     }));
-    console.log("Returning users:", formattedUsers); // Debug log
+    console.log("Returning users:", formattedUsers);
     res.status(200).json(formattedUsers);
   } catch (err) {
     console.error("Error fetching users:", err);

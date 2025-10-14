@@ -14,7 +14,6 @@ import { Dropdown } from "react-native-element-dropdown";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import ConfettiCannon from "react-native-confetti-cannon";
 
-// Helper function to parse time string (e.g., "10:30 AM") to Date object for comparison
 const parseTimeToDate = (timeStr, day, currentDate = new Date()) => {
   const [time, period] = timeStr.split(" ");
   const [hours, minutes] = time.split(":").map(Number);
@@ -27,42 +26,40 @@ const parseTimeToDate = (timeStr, day, currentDate = new Date()) => {
   return date;
 };
 
-// Helper function to check if a schedule is in the past
 const isScheduleInPast = (startTime, day, currentDate = new Date()) => {
   const scheduleDate = parseTimeToDate(startTime, day, currentDate);
   return scheduleDate < currentDate;
 };
 
-// Helper function to check if a schedule has expired
 const isScheduleExpired = (endTime, day, currentDate = new Date()) => {
   const scheduleEndDate = parseTimeToDate(endTime, day, currentDate);
   return scheduleEndDate < currentDate;
 };
 
-// ✅ Helper function to check if current time is within schedule range (with 5-min grace)
 const isWithinSchedule = (startTime, endTime, day, currentDate = new Date()) => {
   const start = parseTimeToDate(startTime, day, currentDate);
   const end = parseTimeToDate(endTime, day, currentDate);
 
-  const gracePeriodMs = 5 * 60 * 1000; // 5 minutes
+  const gracePeriodMs = 5 * 60 * 1000;
   const adjustedStart = new Date(start.getTime() - gracePeriodMs);
   const adjustedEnd = new Date(end.getTime() + gracePeriodMs);
 
   return currentDate >= adjustedStart && currentDate <= adjustedEnd;
 };
 
-const QRDutyFormModal = ({
+export default function QRDutyFormModal({
   visible,
   onClose,
   onSave,
   initialData = null,
+  fetchedDuties,
   YEARS,
   COURSES,
   DUTY_TYPES,
   DAYS,
   TIMES,
   ROOMS,
-}) => {
+}) {
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
   const [year, setYear] = useState(null);
@@ -76,7 +73,6 @@ const QRDutyFormModal = ({
   useEffect(() => {
     if (visible) {
       let initialSchedules = initialData?.schedules || [{ day: "", startTime: "", endTime: "", room: "" }];
-      // Filter out expired schedules on modal open
       initialSchedules = initialSchedules.filter(
         (sched) => !sched.endTime || !isScheduleExpired(sched.endTime, sched.day)
       );
@@ -88,6 +84,32 @@ const QRDutyFormModal = ({
       setSchedules(initialSchedules.length > 0 ? initialSchedules : [{ day: "", startTime: "", endTime: "", room: "" }]);
     }
   }, [visible, initialData]);
+
+  useEffect(() => {
+    if (studentId && fetchedDuties && fetchedDuties.length > 0) {
+      const matchingDuty = fetchedDuties.find((duty) => duty.id === studentId.trim());
+      if (matchingDuty) {
+        setStudentName(matchingDuty.name || "");
+        setYear(matchingDuty.year || null);
+        setCourse(matchingDuty.course || null);
+        setDutyType(matchingDuty.dutyType || null);
+        setSchedules(matchingDuty.schedules && matchingDuty.schedules.length > 0
+          ? matchingDuty.schedules.map(s => ({
+            day: s.day || "",
+            startTime: s.startTime || "",
+            endTime: s.endTime || "",
+            room: s.room || ""
+          }))
+          : [{ day: "", startTime: "", endTime: "", room: "" }]);
+      } else {
+        setStudentName("");
+        setYear(null);
+        setCourse(null);
+        setDutyType(null);
+        setSchedules([{ day: "", startTime: "", endTime: "", room: "" }]);
+      }
+    }
+  }, [studentId, fetchedDuties]);
 
   const isEditing = !!initialData;
 
@@ -125,7 +147,6 @@ const QRDutyFormModal = ({
         return Alert.alert("Invalid Duty Duration", "1hr or above allowed duty hours.");
       }
 
-      // ✅ Check schedule time validity
       if (!isWithinSchedule(s.startTime, s.endTime, s.day)) {
         setInvalidMessage(
           "The time for this duty has already passed or has not yet started. Please choose another schedule."
@@ -178,7 +199,6 @@ const QRDutyFormModal = ({
             <ScrollView contentContainerStyle={styles.scrollContent}>
               <Text style={styles.title}>{isEditing ? "Edit Scholar Duty" : "Duty QR Form"}</Text>
 
-              {/* Student Info */}
               <Text style={styles.label}>Student Name</Text>
               <TextInput
                 placeholder="Enter Student Name"
@@ -204,7 +224,6 @@ const QRDutyFormModal = ({
                 style={styles.input}
               />
 
-              {/* Dropdowns */}
               <Text style={styles.label}>Year</Text>
               <Dropdown
                 style={styles.dropdown}
@@ -253,7 +272,6 @@ const QRDutyFormModal = ({
                 )}
               />
 
-              {/* Schedule Section */}
               <Text style={styles.sectionTitle}>Schedules</Text>
               {schedules.map((sched, index) => (
                 <View key={index} style={styles.scheduleCard}>
@@ -339,7 +357,6 @@ const QRDutyFormModal = ({
         </View>
       </Modal>
 
-      {/* ✅ Invalid Schedule Modal */}
       <Modal visible={invalidModalVisible} transparent animationType="fade">
         <View style={styles.successOverlay}>
           <View style={styles.successBox}>
@@ -353,7 +370,6 @@ const QRDutyFormModal = ({
         </View>
       </Modal>
 
-      {/* ✅ Success Modal */}
       <Modal visible={successModalVisible} transparent animationType="fade">
         <View style={styles.successOverlay}>
           <ConfettiCannon count={150} origin={{ x: -10, y: 0 }} fadeOut={true} />
@@ -369,7 +385,7 @@ const QRDutyFormModal = ({
       </Modal>
     </>
   );
-};
+}
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
@@ -447,5 +463,3 @@ const styles = StyleSheet.create({
   },
   closeIcon: { position: "absolute", top: 10, right: 10 },
 });
-
-export default QRDutyFormModal;
