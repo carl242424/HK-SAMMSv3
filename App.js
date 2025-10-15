@@ -6,12 +6,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Import the platform-specific navigator instead of the bottom tab navigator directly
 import AdminNavigator from './navigations/AdminNavigator'; // This will conditionally render drawer/tabs
-import AttendanceCheckerBottomNavigator from './navigations/AttendanceCheckerBottomNavigator.js'; 
-import StudentFaciBottomNavigator from './navigations/StudentFaciBottomNavigator.js';
-
+i
 // LoginScreen is in the 'screen' folder
-import LoginScreen from './screen/LoginScreen'; 
-import CheckerHeader from './attendance-checker-components/CheckerHeader.js';
+import LoginScreen from './screen/LoginScreen'
 import CheckerNavigator from './navigations/CheckerNavigator.js';
 import StudentFaciNavigator from './navigations/StudentFaciNavigator.js';
 
