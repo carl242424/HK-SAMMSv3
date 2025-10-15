@@ -276,7 +276,7 @@ export default function QRDutyFormModal({
               {schedules.map((sched, index) => (
                 <View key={index} style={styles.scheduleCard}>
                   <Text style={styles.scheduleTitle}>Schedule {index + 1}</Text>
-
+                  
                   <Dropdown
                     style={styles.dropdown}
                     placeholderStyle={styles.placeholderStyle}
@@ -336,10 +336,7 @@ export default function QRDutyFormModal({
                 </View>
               ))}
 
-              <TouchableOpacity onPress={addSchedule} style={styles.addScheduleBtn}>
-                <Text style={styles.addScheduleText}>+ Add Another Schedule</Text>
-              </TouchableOpacity>
-
+            
               <View style={styles.btnRow}>
                 <TouchableOpacity
                   style={[styles.saveBtn, !isFormComplete && { backgroundColor: "gray" }]}

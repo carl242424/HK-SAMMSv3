@@ -110,6 +110,11 @@ const ScholarDutyFormModal = ({
     console.log("Adding new schedule:", newSchedule);
     setSchedules([...schedules, newSchedule]);
   };
+  const removeSchedule = (index) => {
+  const updated = schedules.filter((_, i) => i !== index);
+  setSchedules(updated);
+};
+
 
   const updateSchedule = (index, field, value) => {
     console.log(`Updating schedule ${index + 1}, field: ${field}, value: ${value}`);
@@ -294,8 +299,17 @@ const ScholarDutyFormModal = ({
 
               <Text style={styles.sectionTitle}>Schedules</Text>
               {schedules.map((sched, index) => (
-                <View key={index} style={styles.scheduleCard}>
-                  <Text style={styles.scheduleTitle}>Schedule {index + 1}</Text>
+               <View key={index} style={styles.scheduleCard}>
+  <View style={styles.scheduleHeader}>
+    <Text style={styles.scheduleTitle}>Schedule {index + 1}</Text>
+
+    {schedules.length > 1 && (
+      <TouchableOpacity onPress={() => removeSchedule(index)}>
+        <AntDesign name="close" size={15} color="red" />
+
+      </TouchableOpacity>
+    )}
+  </View>
 
                   <Dropdown
                     style={styles.dropdown}
@@ -486,6 +500,19 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   closeIcon: { position: "absolute", top: 10, right: 10 },
+  scheduleHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 8,
+},
+scheduleHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 8,
+},
+
 });
 
 export default ScholarDutyFormModal;
