@@ -1,10 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Platform, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; 
 import { PieChart, BarChart, LineChart } from 'react-native-chart-kit';
+// import { Picker } from '@react-native-picker/picker'; // No longer needed
 
 const { width } = Dimensions.get('window');
 const isTabletOrLarger = width > 768;
+const chartWidth = Platform.OS === "web" ? 900 : width - 64;
 
 const useContainerWidth = () => {
   const [containerWidth, setContainerWidth] = useState(width); 
@@ -58,16 +60,112 @@ const FilterButton = ({ label, isSelected, onPress, color, bgColor }) => (
   <TouchableOpacity
     style={[
       styles.filterButton,
-      isSelected && { backgroundColor: bgColor || '#e5e7eb' },
-      { borderColor: color }
+      {
+        backgroundColor: isSelected ? (bgColor || '#1d4ed8') : '#f3f4f6', // active color vs default gray
+        borderColor: isSelected ? (color || '#1d4ed8') : '#d1d5db', // active border vs gray border
+      },
     ]}
     onPress={onPress}
   >
-    <Text style={[styles.filterButtonText, isSelected && { color: color, fontWeight: 'bold' }]}>
+    <Text
+      style={[
+        styles.filterButtonText,
+        {
+          color: isSelected ? '#161616ff' : (color || '#1f2937'), // white text when active, dark when not
+          fontWeight: isSelected ? 'bold' : 'normal',
+        },
+      ]}
+    >
       {label}
     </Text>
   </TouchableOpacity>
 );
+
+
+
+// --- NEW DATE PICKER MODAL COMPONENT ---
+const DatePickerModal = ({ isVisible, onClose, onSelectDate, initialYear, initialMonthIndex }) => {
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentYear = new Date().getFullYear();
+  const YEARS = Array.from({ length: 10 }, (_, i) => currentYear + 3 - i).sort((a, b) => b - a); // 2028 down to 2019
+
+  const [selectedYear, setSelectedYear] = useState(initialYear);
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState(initialMonthIndex);
+
+  const handleSelect = (year, monthIndex) => {
+    onSelectDate(year, MONTHS[monthIndex]);
+  };
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={isVisible}
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.centeredView} onPress={onClose}>
+        <Pressable style={styles.modalView} onPress={(e) => e.stopPropagation()}>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+         <Text style={styles.closeButtonText}>×</Text>
+        </TouchableOpacity>
+
+          <Text style={styles.modalHeader}>Select Year</Text>
+          <View style={styles.yearRow}>
+            {YEARS.map((year) => (
+              <TouchableOpacity
+                key={year}
+                style={[
+                  styles.yearButton,
+                  selectedYear === year && styles.yearButtonSelected,
+                ]}
+                onPress={() => setSelectedYear(year)}
+              >
+                <Text
+                  style={[
+                    styles.dateText,
+                    selectedYear === year && styles.dateTextSelected,
+                  ]}
+                >
+                  {year}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          <Text style={styles.modalHeader}>Select Month</Text>
+          <View style={styles.monthGrid}>
+            {MONTHS.map((month, index) => (
+              <TouchableOpacity
+                key={month}
+                style={[
+                  styles.monthButton,
+                  selectedMonthIndex === index && styles.monthButtonSelected,
+                ]}
+                onPress={() => {
+                  setSelectedMonthIndex(index);
+                  // Apply selection and close immediately on month click
+                  handleSelect(selectedYear, index);
+                  onClose();
+                }}
+              >
+                <Text
+                  style={[
+                    styles.dateText,
+                    selectedMonthIndex === index && styles.dateTextSelected,
+                  ]}
+                >
+                  {month}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+};
+// --- END DATE PICKER MODAL COMPONENT ---
+
 
 const Dashboard = () => {
   const statsData = [
@@ -94,13 +192,27 @@ const statusColors = {
   present: '#10b981',
   absent: '#ef4444',
 };
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const [selectedMonth, setSelectedMonth] = useState('Oct');
-  
-  const toggleMonth = (month) => {
-    setSelectedMonth(month);
+const now = new Date();
+const MONTHS_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+const [selectedMonth, setSelectedMonth] = useState(MONTHS_FULL[now.getMonth()]);
+const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+
+
+  // --- NEW STATE FOR MODAL ---
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const selectedMonthIndex = MONTHS_FULL.indexOf(selectedMonth);
+
+  const handleDateSelect = (year, monthName) => {
+    setSelectedYear(year);
+    setSelectedMonth(monthName);
+    setIsModalVisible(false);
   };
-  
+  // --- END NEW STATE FOR MODAL ---
+
+
   const isMonthWithHighAbsence = selectedMonth === 'Jan' || selectedMonth === 'Feb';
 
   // --- RAW DATA DEFINITIONS ---
@@ -175,23 +287,44 @@ const statusColors = {
   };
   
   // Helper to filter Bar Data for react-native-chart-kit (It only supports simple bars, not stacked)
-  const filterBarData = () => {
-  const filteredDaysData = originalBarData.filter(item => selectedDays.includes(item.day));
+ const filterBarData = () => {
+  const filteredDaysData = originalBarData.filter(item =>
+    selectedDays.includes(item.day)
+  );
 
-  // pick the active status
-  const activeStatus = selectedStatusesBar[0] || 'present';
+  // Single dataset combining both present & absent
+  const data = [];
+  const labels = [];
+
+  filteredDaysData.forEach(item => {
+    if (selectedStatusesBar.includes('present')) {
+      data.push(item.present);
+      labels.push(`${item.day}\nPresent`);
+    }
+    if (selectedStatusesBar.includes('absent')) {
+      data.push(item.absent);
+      labels.push(`${item.day}\nAbsent`);
+    }
+  });
+
+  const colors = [];
+  filteredDaysData.forEach(() => {
+    if (selectedStatusesBar.includes('present')) colors.push((opacity = 1) => statusColors.present);
+    if (selectedStatusesBar.includes('absent')) colors.push((opacity = 1) => statusColors.absent);
+  });
 
   return {
-    labels: filteredDaysData.map(item => item.day),
+    labels,
     datasets: [
       {
-        data: filteredDaysData.map(item => item[activeStatus] || 0),
-        colors: filteredDaysData.map(() => (opacity = 1) => statusColors[activeStatus]),
+        data,
+        colors,
       },
     ],
-    legend: [activeStatus.charAt(0).toUpperCase() + activeStatus.slice(1)],
+    legend: selectedStatusesBar.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
   };
 };
+
   const filterPieData = () => {
     return originalPieData.filter(item => selectedPieStatuses.includes(item.status));
   };
@@ -268,7 +401,7 @@ const statusColors = {
             label={day}
             isSelected={selectedDays.includes(day)}
             onPress={() => toggleDay(day)}
-            color="#333"
+            color="#333333ff"
             bgColor="#f3f4f6"
           />
         ))}
@@ -336,90 +469,110 @@ const statusColors = {
       
       <Text style={styles.sectionHeader}>Attendance Trends & Distribution</Text>
       
+    {/* --- DATE PICKER BUTTON REPLACEMENT --- */}
       <View style={styles.monthPickerContainer}>
-        <Text style={styles.monthPickerLabel}>Viewing Data For:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthPickerScroll}>
-          {months.map(month => (
-            <FilterButton
-              key={month}
-              label={month}
-              isSelected={selectedMonth === month}
-              onPress={() => toggleMonth(month)}
-              color={selectedMonth === month ? '#fff' : '#333'}
-              bgColor={selectedMonth === month ? '#1d4ed8' : '#e5e7eb'}
-            />
-          ))}
-        </ScrollView>
+        <TouchableOpacity style={styles.datePickerButton} onPress={() => setIsModalVisible(true)}>
+            <Ionicons name="calendar-outline" size={20} color="#1d4ed8" style={{ marginRight: 8 }} />
+            <Text style={styles.datePickerText}>{`${selectedMonth} ${selectedYear}`}</Text>
+        </TouchableOpacity>
       </View>
 
-     <GraphPlaceholder title={`Daily Attendance Counts (${selectedMonth} | Mon-Fri)`} height={300} filterMenu={barFilters}>
+      <DatePickerModal
+        isVisible={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        onSelectDate={handleDateSelect}
+        initialYear={selectedYear}
+        initialMonthIndex={selectedMonthIndex}
+      />
+    {/* --- END DATE PICKER BUTTON REPLACEMENT --- */}
+<GraphPlaceholder
+  title={`Daily Attendance Counts (${selectedMonth} ${selectedYear} | Mon-Fri)`}
+  height={300}
+  filterMenu={barFilters}
+>
   {barChartKitData.labels.length > 0 ? (
     <>
-      <BarChart
-  data={barChartKitData}
-  width={width - 64}
-  height={260}
-  fromZero
-  showValuesOnTopOfBars   // ✅ built-in prop for labels
-  chartConfig={{
-    ...chartConfig,
-    barPercentage: 0.6,
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
-    propsForLabels: { fontSize: 12, fontWeight: '600' },
-    propsForBackgroundLines: { stroke: '#d1d5db', strokeDasharray: '4' },
-  }}
-  style={{ marginVertical: 10, borderRadius: 12 }}
-  flatColor
-  showBarTops={false}
-  withCustomBarColorFromData={true}
-  renderCustomBarContent={({ x, y, width, height, index, value }) => (
-    <View key={index}>
-      {/* 🔑 Label above each bar */}
-      <Text
-        style={{
-          position: 'absolute',
-          left: x + width / 2 - 15,   // centers better
-          top: y - 20,               // sits just above bar
-          fontSize: 12,
-          fontWeight: '700',
-          color: '#111827',
-          textAlign: 'center',
-          width: 30,                 // ensures text doesn’t cut off
-        }}
-      >
-        {value}
-      </Text>
+      {/* ✅ Wrap BarChart inside a horizontal ScrollView */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <BarChart
+          data={barChartKitData}
+          width={Math.max(barChartKitData.labels.length * 90, width - 64)} // 👈 dynamic width
+          height={260}
+          fromZero
+          showValuesOnTopOfBars
+          flatColor
+          showBarTops={false}
+          withCustomBarColorFromData
+          chartConfig={{
+            ...chartConfig,
+            barPercentage: 0.5,
+            decimalPlaces: 0,
+            color: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
+            propsForLabels: { fontSize: 12, fontWeight: '600' },
+            propsForBackgroundLines: { stroke: '#d1d5db', strokeDasharray: '4' },
+          }}
+          style={{
+            marginVertical: 10,
+            borderRadius: 12,
+            paddingRight: 30, // prevents last bar cutoff
+          }}
+          renderCustomBarContent={({ x, y, width, height, index, value }) => (
+            <View key={index}>
+              {/* 🔢 Value label above bar */}
+              <Text
+                style={{
+                  position: 'absolute',
+                  left: x + width / 2 - 15,
+                  top: y - 18,
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: '#111827',
+                  textAlign: 'center',
+                  width: 30,
+                }}
+              >
+                {value}
+              </Text>
 
-            {/* Rounded Corner Overlay */}
-            <View
-              style={{
-                position: 'absolute',
-                left: x,
-                top: y,
-                width: width,
-                height: height,
-                borderTopLeftRadius: 6,
-                borderTopRightRadius: 6,
-                overflow: 'hidden',
-              }}
-            />
-          </View>
-        )}
-      />
+              {/* 🎨 Rounded bar overlay */}
+              <View
+                style={{
+                  position: 'absolute',
+                  left: x,
+                  top: y,
+                  width: width,
+                  height: height,
+                  borderTopLeftRadius: 6,
+                  borderTopRightRadius: 6,
+                  overflow: 'hidden',
+                }}
+              />
+            </View>
+          )}
+        />
+      </ScrollView>
 
-      {/* Legend */}
+      {/* 🧭 Legend */}
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: statusColors.present }]} />
+          <View
+            style={[
+              styles.legendColor,
+              { backgroundColor: statusColors.present },
+            ]}
+          />
           <Text style={styles.legendText}>Present</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: statusColors.absent }]} />
+          <View
+            style={[
+              styles.legendColor,
+              { backgroundColor: statusColors.absent },
+            ]}
+          />
           <Text style={styles.legendText}>Absent</Text>
         </View>
-        
       </View>
     </>
   ) : (
@@ -429,11 +582,10 @@ const statusColors = {
   )}
 </GraphPlaceholder>
 
-
       
       <View style={styles.splitGraphsContainer}>
         <View>
-          <GraphPlaceholder title={`Monthly Distribution (${selectedMonth})`} height={250} filterMenu={pieFilters}>
+          <GraphPlaceholder title={`Monthly Distribution (${selectedMonth} ${selectedYear} )`} height={250} filterMenu={pieFilters}>
             {filteredPieData.length > 0 ? (
               <PieChart
                 data={filteredPieData}
@@ -452,11 +604,13 @@ const statusColors = {
         </View>
 
         <View>
-          <GraphPlaceholder title={`Weekly Attendance Rate (${selectedMonth} | Wk 1-4)`} height={280} filterMenu={lineFilters}>
+          <GraphPlaceholder title={`Weekly Attendance Rate (${selectedMonth} ${selectedYear} | Wk 1-4)`} height={280} filterMenu={lineFilters}>
             {filteredLineData.labels.length > 0 ? (
               <LineChart
                 data={filteredLineData}
                 height={220}
+                  width={chartWidth}
+
                 chartConfig={chartConfig}
                 bezier 
                 withVerticalLines={false}
@@ -529,22 +683,28 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   monthPickerContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
     marginBottom: 20,
+    // Note: The previous monthPickerContainer styling is mostly moved to datePickerButton
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+    elevation: 1,
   },
-  monthPickerLabel: {
-    fontSize: 14,
+  datePickerText: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#4b5563',
-    marginBottom: 8,
-  },
-  monthPickerScroll: {
-    flexDirection: 'row',
-    gap: 8,
+    color: '#1f2937',
   },
   graphContainer: {
     backgroundColor: 'white',
@@ -623,6 +783,99 @@ graphBox: {
     fontSize: 12,
     fontWeight: '500',
   },
+  
+  // --- MODAL STYLES ---
+  centeredView: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingTop: Platform.OS === 'web' ? 50 : 100, // Position lower on web
+  },
+  modalView: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: Math.min(width * 0.9, 400), // Max width for larger screens
+    position: 'absolute',
+    top: 50, // Position near the button area
+  },
+  modalHeader: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  yearRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    marginBottom: 10,
+  },
+  yearButton: {
+    width: '20%', // 5 columns
+    aspectRatio: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 5,
+  },
+  yearButtonSelected: {
+    backgroundColor: '#6366f1',
+    borderRadius: 8,
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+  },
+  monthButton: {
+    width: '33.333%', // 3 columns
+    aspectRatio: 2, 
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 5,
+  },
+  monthButtonSelected: {
+    backgroundColor: '#6366f1',
+    borderRadius: 8,
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#4b5563',
+    fontWeight: '500',
+  },
+  dateTextSelected: {
+    color: 'white',
+    fontWeight: '700',
+  },
+  closeButton: {
+  position: 'absolute',
+  top: 10,
+  right: 12,
+  zIndex: 10,
+  borderRadius: 20,
+  width: 28,
+  height: 28,
+  alignItems: 'center',
+  justifyContent: 'center',
+  elevation: 2, // adds shadow on Android
+},
+closeButtonText: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  lineHeight: 20,
+},
+
 });
 
 export default Dashboard;
