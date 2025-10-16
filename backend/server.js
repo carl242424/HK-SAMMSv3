@@ -9,6 +9,8 @@ const authRoutes = require('./routes/auth');
 const scholarRoutes = require('./routes/scholar');
 const dutyRoutes = require("./routes/duty");
 const userRoutes = require("./routes/user");
+const attendanceRoutes = require('./routes/attendance');
+const checkerAttendanceRoutes = require('./routes/checkerAttendance');
 
 
 const app = express();
@@ -21,6 +23,8 @@ app.use(express.json());
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
   dbName: 'Final-Project',
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 })
 .then(() => console.log('✅ MongoDB connected'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
@@ -30,6 +34,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/scholars', scholarRoutes);
 app.use("/api/duties", dutyRoutes);
 app.use("/api/users", userRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/checkerAttendance', checkerAttendanceRoutes);
 
 
 

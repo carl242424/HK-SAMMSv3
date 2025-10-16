@@ -8,9 +8,9 @@ const PRIMARY_COLOR = "#00A4DF";
 
 export default function AdminProfile() {
   const [adminData, setAdminData] = useState({
-    name: "Loading...",
-    id: "Loading...",
-    status: "Loading...",
+    name: "Test",
+    id: "000-000-000",
+    status: "Active",
     password: "********",
   });
   const navigation = useNavigation(); // Initialize navigation

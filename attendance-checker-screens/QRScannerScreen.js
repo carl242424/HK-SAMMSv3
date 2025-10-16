@@ -10,7 +10,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import QRCheckIn from "./QRCheckIn"; // Make sure this path is correct
 
-const API_URL = "http://192.168.1.21:5000/api/attendance"; // replace YOUR_LOCAL_IP
+const API_URL = "http://192.168.86.139:8000/api/checkerAttendance";
 const PRIMARY_COLOR = "#00A4DF";
 
 export default function QRScannerScreen() {
@@ -25,21 +25,32 @@ export default function QRScannerScreen() {
   const handleBarcodeScanned = async ({ data }) => {
     console.log("Raw QR data:", data); // Debug raw QR data
     try {
-      const parsed = JSON.parse(data); // expects structured JSON from QR
+      const parsed = JSON.parse(data); // Expects structured JSON from QR
       setScannedData(parsed);
       setIsSaving(true);
+
+      // Prepare check record with checker details
+      const checkRecord = {
+        studentId: parsed.studentId || `NO-ID-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        studentName: parsed.studentName || "N/A",
+        checkerId: "FAC001", // Example checker ID (replace with dynamic value if needed)
+        checkerName: "John Facilitator", // Example checker name (replace with dynamic value if needed)
+        checkInTime: new Date(),
+        location: parsed.location || "Room 101",
+        status: "Pending",
+      };
 
       // Save attendance to backend
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed),
+        body: JSON.stringify(checkRecord),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        Alert.alert("✅ Attendance Recorded", `${parsed.name} marked present.`);
+        Alert.alert("✅ Attendance Recorded", `${checkRecord.studentName} marked for check.`);
       } else {
         Alert.alert("❌ Failed", result.message || "Something went wrong");
       }

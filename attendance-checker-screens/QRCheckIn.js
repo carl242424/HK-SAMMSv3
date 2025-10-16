@@ -11,33 +11,73 @@ import {
 const QRCheckIn = ({ scannedData }) => {
   const [records, setRecords] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const API_URL = "http://192.168.86.139:8000/api/checkerAttendance";
+
+  // Fetch attendance records from API on mount
+  useEffect(() => {
+    const fetchRecords = async () => {
+      try {
+        const response = await fetch(API_URL);
+        console.log('Response status:', response.status); // Keep status log
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json(); // Use json() directly
+        setRecords(data);
+      } catch (error) {
+        console.error("Error fetching records:", error);
+      }
+    };
+    fetchRecords();
+  }, []);
 
   // Auto-add scanned QR data when received
   useEffect(() => {
     if (scannedData) {
       const newRecord = {
-        id: scannedData.id || `NO-ID-${Date.now()}`,
-        name: scannedData.name || "N/A",
-        dutyType: scannedData.dutyType || "N/A",
-        schedules: scannedData.schedules || [],
-        status: scannedData.status || "Active",
-        time: new Date().toLocaleString(),
+        studentId: scannedData.studentId || `NO-ID-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        studentName: scannedData.studentName || "N/A",
+        checkerId: "FAC001", // Example checker ID (replace with dynamic value if needed)
+        checkerName: "John Facilitator", // Example checker name (replace with dynamic value if needed)
+        checkInTime: new Date(),
+        location: scannedData.location || "Room 101",
+        status: "Pending",
       };
 
-      // Prevent duplicates by ID
-      setRecords((prev) => {
-        const exists = prev.some((r) => r.id === newRecord.id);
-        return exists ? prev : [newRecord, ...prev];
-      });
+      const postRecord = async () => {
+        try {
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newRecord),
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const result = await response.json();
+          setRecords((prev) => {
+            const exists = prev.some((r) => r.studentId === newRecord.studentId);
+            return exists ? prev : [newRecord, ...prev];
+          });
+        } catch (error) {
+          console.error("Error posting record:", error);
+        }
+      };
+      postRecord();
     }
   }, [scannedData]);
 
-  // Filter records by search input
-  const filteredRecords = records.filter(
-    (r) =>
-      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter records by search input with defensive checks
+  const filteredRecords = records.filter((r) => {
+    const studentName = r.studentName || "";
+    const studentId = r.studentId || "";
+    return (
+      (typeof studentName === "string" &&
+        studentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (typeof studentId === "string" &&
+        studentId.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  });
 
   return (
     <View style={styles.container}>
@@ -71,11 +111,11 @@ const QRCheckIn = ({ scannedData }) => {
                 { backgroundColor: i % 2 === 0 ? "#f9f9f9" : "#fff" },
               ]}
             >
-              <Text style={styles.cell}>{r.id}</Text>
-              <Text style={styles.cell}>{r.name}</Text>
-              <Text style={styles.cell}>{r.dutyType}</Text>
+              <Text style={styles.cell}>{r.studentId}</Text>
+              <Text style={styles.cell}>{r.studentName}</Text>
+              <Text style={styles.cell}>{r.dutyType || "N/A"}</Text>
               <Text style={styles.cell}>{r.status}</Text>
-              <Text style={styles.cell}>{r.time}</Text>
+              <Text style={styles.cell}>{new Date(r.checkInTime).toLocaleString()}</Text>
             </View>
           ))
         ) : (
