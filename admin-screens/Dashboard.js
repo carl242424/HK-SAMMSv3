@@ -2,11 +2,11 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Platform, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; 
 import { PieChart, BarChart, LineChart } from 'react-native-chart-kit';
-// import { Picker } from '@react-native-picker/picker'; // No longer needed
 
 const { width } = Dimensions.get('window');
 const isTabletOrLarger = width > 768;
 const chartWidth = Platform.OS === "web" ? 900 : width - 64;
+
 
 const useContainerWidth = () => {
   const [containerWidth, setContainerWidth] = useState(width); 
@@ -168,12 +168,23 @@ const DatePickerModal = ({ isVisible, onClose, onSelectDate, initialYear, initia
 
 
 const Dashboard = () => {
+  const [isSmallScreen, setIsSmallScreen] = useState(width < 480);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const newWidth = Dimensions.get("window").width;
+      setIsSmallScreen(newWidth < 380);
+    };
+
+    const subscription = Dimensions.addEventListener("change", handleResize);
+    return () => subscription?.remove();
+  }, []);
   const statsData = [
     { title: 'Total Scholar', value: '100', detail: '+5% This Month', detailColor: 'green', iconName: 'school-outline' },
     { title: 'Present Today', value: '95', detail: '80% Attendance Rate', detailColor: 'green', iconName: 'checkmark-circle-outline' },
     { title: 'Absent Today', value: '5', detail: '20% Absence Rate', detailColor: 'red', iconName: 'close-circle-outline' },
     { title: 'Weekly Average', value: '92%', detail: '+1% From last week', detailColor: 'green', iconName: 'trending-up-outline' },
-    { title: 'Monthly Goal', value: '80%', detail: 'Attendance Target: 90%', detailColor: '#60a5fa', iconName: 'target-outline' },
+    { title: 'Monthly Goal', value: '80%', detail: 'Attendance Target: 90%', detailColor: '#60a5fa', iconName: 'flag-outline' },
     { title: 'This Week', value: '500', detail: 'Total Check-ins', detailColor: 'green', iconName: 'calendar-outline' },
   ];
 
@@ -450,32 +461,48 @@ const [selectedYear, setSelectedYear] = useState(now.getFullYear());
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.sectionHeader}>Attendance Overview</Text>
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        contentContainerStyle={styles.cardsRow}
-      >
-        {statsData.map((stat, index) => (
-          <StatsCard 
-            key={index}
-            title={stat.title}
-            value={stat.value}
-            detail={stat.detail}
-            detailColor={stat.detailColor}
-            iconName={stat.iconName}
-          />
-        ))}
-      </ScrollView>
+<ScrollView
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  contentContainerStyle={[
+    styles.cardsRow,
+    Platform.OS === "web" && { justifyContent: "flex-end", marginLeft: 240 }, // ✅ only applies on web
+  ]}
+>
+  {statsData.map((stat, index) => (
+    <StatsCard
+      key={index}
+      title={stat.title}
+      value={stat.value}
+      detail={stat.detail}
+      detailColor={stat.detailColor}
+      iconName={stat.iconName}
+    />
+  ))}
+</ScrollView>
+
+
       
-      <Text style={styles.sectionHeader}>Attendance Trends & Distribution</Text>
-      
-    {/* --- DATE PICKER BUTTON REPLACEMENT --- */}
-      <View style={styles.monthPickerContainer}>
-        <TouchableOpacity style={styles.datePickerButton} onPress={() => setIsModalVisible(true)}>
-            <Ionicons name="calendar-outline" size={20} color="#1d4ed8" style={{ marginRight: 8 }} />
-            <Text style={styles.datePickerText}>{`${selectedMonth} ${selectedYear}`}</Text>
-        </TouchableOpacity>
-      </View>
+  <View
+  style={[
+    styles.sectionHeaderRow,
+    isSmallScreen && { flexDirection: "column", alignItems: "flex-start" },
+  ]}
+>
+  <Text style={styles.sectionHeader}>Attendance Trends & Distribution</Text>
+
+  <TouchableOpacity
+    style={[
+      styles.datePickerButton,
+      isSmallScreen && { marginTop: 8, alignSelf: "flex-start" },
+    ]}
+    onPress={() => setIsModalVisible(true)}
+  >
+    <Ionicons name="calendar-outline" size={20} color="#1d4ed8" style={{ marginRight: 8 }} />
+    <Text style={styles.datePickerText}>{`${selectedMonth} ${selectedYear}`}</Text>
+  </TouchableOpacity>
+</View>
+
 
       <DatePickerModal
         isVisible={isModalVisible}
@@ -584,47 +611,65 @@ const [selectedYear, setSelectedYear] = useState(now.getFullYear());
 
       
       <View style={styles.splitGraphsContainer}>
-        <View>
-          <GraphPlaceholder title={`Monthly Distribution (${selectedMonth} ${selectedYear} )`} height={250} filterMenu={pieFilters}>
-            {filteredPieData.length > 0 ? (
-              <PieChart
-                data={filteredPieData}
-                height={200}
-                chartConfig={chartConfig}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                absolute
-                center={[isTabletOrLarger ? 50 : 0, 0]}
-              />
-            ) : (
-              <Text style={styles.graphLabel}>No data selected. Please choose at least one status.</Text>
-            )}
-          </GraphPlaceholder>
-        </View>
+   <View
+    style={{
+      flex: 1,
+      ...(Platform.OS === "web" && { maxWidth: "36%", height: 480 }), // 👈 taller container on web
+    }}
+  >
+    <GraphPlaceholder
+      title={`Monthly Distribution (${selectedMonth} ${selectedYear})`}
+      height={Platform.OS === "web" ? 430 : 250} // 👈 taller chart box on web only
+      filterMenu={pieFilters}
+    >
+      {filteredPieData.length > 0 ? (
+        <PieChart
+          data={filteredPieData}
+          height={Platform.OS === "web" ? 390 : 200} // 👈 bigger pie chart on web only
+          chartConfig={chartConfig}
+          accessor="population"
+          backgroundColor="transparent"
+          paddingLeft="15"
+          absolute
+          center={[isTabletOrLarger ? 50 : 0, 0]}
+        />
+      ) : (
+        <Text style={styles.graphLabel}>No data selected.</Text>
+      )}
+    </GraphPlaceholder>
+  </View>
 
-        <View>
-          <GraphPlaceholder title={`Weekly Attendance Rate (${selectedMonth} ${selectedYear} | Wk 1-4)`} height={280} filterMenu={lineFilters}>
-            {filteredLineData.labels.length > 0 ? (
-              <LineChart
-                data={filteredLineData}
-                height={220}
-                  width={chartWidth}
+  <View
+  style={{
+    flex: 1,
+    ...(Platform.OS === "web" && { maxWidth: "69%", height: 480 }), // 👈 taller container on web
+  }}
+>
+  <GraphPlaceholder
+    title={`Weekly Attendance Rate (${selectedMonth} ${selectedYear})`}
+    height={Platform.OS === "web" ? 390 : 280} // 👈 larger height on web
+    filterMenu={lineFilters}
+  >
+    {filteredLineData.labels.length > 0 ? (
+      <LineChart
+        data={filteredLineData}
+        height={Platform.OS === "web" ? 320 : 220} // 👈 chart itself taller on web
+        width={chartWidth}
+        chartConfig={chartConfig}
+        bezier
+        withVerticalLines={false}
+        withDots={true}
+        showLegend={true}
+        withShadow={true}
+      />
+    ) : (
+      <Text style={styles.graphLabel}>No data selected.</Text>
+    )}
+  </GraphPlaceholder>
+</View>
 
-                chartConfig={chartConfig}
-                bezier 
-                withVerticalLines={false}
-                withDots={true}
-                showLegend={true}
-                withShadow={true} 
-              />
-            ) : (
-              <Text style={styles.graphLabel}>No data selected. Please choose at least one week.</Text>
-            )}
-          </GraphPlaceholder>
-        </View>
-      </View>
-      
+</View>
+
       <View style={{ height: 50 }} />
     </ScrollView>
   );
@@ -645,23 +690,28 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
-  cardsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingBottom: 16,
-  },
+cardsRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 16,
+  paddingVertical: 16,
+},
+
+
   card: {
-    width: 160, 
-    minHeight: 120,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 3,
-  },
+  width: 180, // wider for more spacing
+  minHeight: 130,
+  backgroundColor: 'white',
+  borderRadius: 16,
+  padding: 20,
+  marginHorizontal: 10, // spacing between cards
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.15,
+  shadowRadius: 6,
+  elevation: 5,
+},
+
   cardIcon: {
     marginBottom: 8,
     alignSelf: 'flex-start',
@@ -686,37 +736,59 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     // Note: The previous monthPickerContainer styling is mostly moved to datePickerButton
   },
-  datePickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-    elevation: 1,
-  },
+ datePickerButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'white',
+  borderRadius: 8,
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderWidth: 1,
+  borderColor: '#e5e7eb',
+
+  // 🌙 Shadow (iOS & Android)
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.15,
+  shadowRadius: 4,
+  elevation: 4,
+
+  // 💻 Web shadow fallback
+  ...(Platform.OS === 'web' && {
+    boxShadow: '0px 3px 8px rgba(0, 0, 0, 0.15)',
+    transition: 'box-shadow 0.2s ease-in-out',
+  }),
+},
+
   datePickerText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1f2937',
   },
-  graphContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 3,
-  },
+graphContainer: {
+  backgroundColor: 'white',
+  borderRadius: 16,
+  padding: 16,
+  marginBottom: 24,
+  // 💡 Add border for outline
+  borderWidth: 1,
+  borderColor: '#e5e7eb',
+
+  // 💡 Add strong drop shadow (for both iOS & Android)
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.2,
+  shadowRadius: 6,
+  elevation: 6,
+
+  // 💡 Add subtle outer glow effect (works nicely on web too)
+  ...(Platform.OS === 'web' && {
+    boxShadow:
+      '0px 4px 10px rgba(0,0,0,0.15), 0px 0px 4px rgba(0,0,0,0.05)',
+    transition: 'box-shadow 0.2s ease-in-out',
+  }),
+},
+
   graphTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -760,10 +832,12 @@ graphBox: {
       fontSize: 12,
       color: '#333',
   },
-  splitGraphsContainer: {
-    flexDirection: 'column', 
-    justifyContent: 'space-between',
-  },
+splitGraphsContainer: {
+  flexDirection: Platform.OS === "web" ? "row" : "column", // ✅ side by side on web
+  justifyContent: "space-between",
+  gap: 20, // add spacing between graphs on web
+},
+
   filterMenuContainer: { 
     marginBottom: 10,
   },
@@ -874,6 +948,24 @@ closeButtonText: {
   fontSize: 20,
   fontWeight: 'bold',
   lineHeight: 20,
+},
+sectionHeaderRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginTop: 20,
+  marginBottom: 10,
+},
+chartShadowWrapper: {
+  backgroundColor: 'white',
+  borderRadius: 12,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.15,
+  shadowRadius: 6,
+  elevation: 6, // Android shadow
+  padding: 8, // optional for spacing around chart
+  marginVertical: 6,
 },
 
 });
