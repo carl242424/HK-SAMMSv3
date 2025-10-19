@@ -10,7 +10,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import QRCheckIn from "./QRCheckIn"; // Make sure this path is correct
 
-const API_URL = "http://192.168.86.139:8000/api/checkerAttendance";
+const API_URL = "http://192.168.100.237:8000/api/checkerAttendance";
 const PRIMARY_COLOR = "#00A4DF";
 
 export default function QRScannerScreen() {
@@ -33,11 +33,12 @@ export default function QRScannerScreen() {
       const checkRecord = {
         studentId: parsed.studentId || `NO-ID-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         studentName: parsed.studentName || "N/A",
-        checkerId: "FAC001", // Example checker ID (replace with dynamic value if needed)
-        checkerName: "John Facilitator", // Example checker name (replace with dynamic value if needed)
+        Duty:parsed.dutyType,
+        // checkerId: parsed.studentId, // Example checker ID (replace with dynamic value if needed)
+        // checkerName: "John Facilitator", // Example checker name (replace with dynamic value if needed)
         checkInTime: new Date(),
         location: parsed.location || "Room 101",
-        status: "Pending",
+        status: "Present",
       };
 
       // Save attendance to backend

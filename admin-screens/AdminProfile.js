@@ -27,7 +27,7 @@ export default function AdminProfile() {
           return;
         }
 
-        const response = await axios.get("http://192.168.86.139:8000/api/users/profile", {
+        const response = await axios.get("http://192.168.100.237:8000/api/users/profile", {
           headers: {
             Authorization: `Bearer ${token}`,
           },

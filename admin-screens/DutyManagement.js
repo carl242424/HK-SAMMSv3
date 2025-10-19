@@ -40,7 +40,7 @@ export default function DutyManagement() {
   useEffect(() => {
     const fetchDuties = async () => {
       try {
-        const response = await axios.get("http://192.168.86.139:8000/api/duties");
+        const response = await axios.get("http://192.168.100.237:8000/api/duties");
         console.log("Fetched duties:", response.data);
         setDuties(response.data);
       } catch (error) {
@@ -54,7 +54,7 @@ export default function DutyManagement() {
   const validateScholarAccount = async (scholarId) => {
     console.log("Validating scholar ID:", scholarId);
     try {
-      const response = await axios.get(`http://192.168.86.139:8000/api/scholars/${scholarId}`);
+      const response = await axios.get(`http://192.168.100.237:8000/api/scholars/${scholarId}`);
       console.log("Validation response:", JSON.stringify(response.data, null, 2));
       return response.data.exists === true;
     } catch (error) {
@@ -151,7 +151,7 @@ export default function DutyManagement() {
         const existingDuties = duties.filter(d => d.id === duty.id);
         await Promise.all(
           existingDuties.map(d =>
-            d._id ? axios.delete(`http://192.168.86.139:8000/api/duties/${d._id}`) : Promise.resolve()
+            d._id ? axios.delete(`http://192.168.100.237:8000/api/duties/${d._id}`) : Promise.resolve()
           )
         );
         console.log("Deleted existing duties for scholar ID:", duty.id);
@@ -160,7 +160,7 @@ export default function DutyManagement() {
       // Create new duties
       const responses = await Promise.all(
         dutiesToSave.map((dutyItem) =>
-          axios.post("http://192.168.86.139:8000/api/duties", dutyItem)
+          axios.post("http://192.168.100.237:8000/api/duties", dutyItem)
         )
       );
       const savedDuties = responses.map((r) => r.data);
@@ -202,7 +202,7 @@ export default function DutyManagement() {
     setIsLoading(true);
     console.log("Fetching scholar details for:", scholarId);
     try {
-      const response = await axios.get(`http://192.168.86.139:8000/api/scholars/${scholarId}`);
+      const response = await axios.get(`http://192.168.100.237:8000/api/scholars/${scholarId}`);
       console.log("Scholar details response:", JSON.stringify(response.data, null, 2));
       if (!response.data.exists || !response.data.scholar) {
         throw new Error("Scholar not found");

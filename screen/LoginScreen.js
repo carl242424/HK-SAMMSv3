@@ -112,7 +112,7 @@ const handleLogin = async () => {
   }
 
   try {
-    const response = await fetch("http://192.168.86.139:8000/api/auth/login", {
+    const response = await fetch("http://192.168.100.237:8000/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password: loginPassword }),
@@ -178,7 +178,7 @@ const handleLogin = async () => {
   setEmailError("");
 
   try {
-    const response = await fetch("http://192.168.86.139:8000/api/auth/forgot-password", {
+    const response = await fetch("http://192.168.100.237:8000/api/auth/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.toLowerCase() }),
@@ -208,7 +208,7 @@ const handleVerifyCode = async () => {
   }
 
   try {
-    const response = await fetch("http://192.168.86.139:8000/api/auth/verify-code", {
+    const response = await fetch("http://192.168.100.237:8000/api/auth/verify-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.toLowerCase(), code }),
@@ -240,7 +240,7 @@ const handleVerifyCode = async () => {
   }
 
   try {
-    const response = await fetch("http://192.168.86.139:8000/api/auth/reset-password", {
+    const response = await fetch("http://192.168.100.237:8000/api/auth/reset-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // <-- send `newPassword`, because backend expects that name

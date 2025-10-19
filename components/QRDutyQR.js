@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  useWindowDimensions,
-  Modal,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal, Alert } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
@@ -63,15 +55,11 @@ export default function QRDutyQR({ duty, onRemove }) {
       const code = await generateUniqueCode();
 
       const qrPayload = {
-        qrCode: code,
-        id: duty.id,
-        name: duty.name,
-        year: duty.year,
-        course: duty.course,
-        dutyType: duty.duty,
-        schedules: duty.schedules,
-        status,
-        generatedAt: "2025-10-14T20:29:00-07:00", // 08:29 PM PST, October 14, 2025
+        studentId: duty.id, // Map id to studentId
+        studentName: duty.name, // Map name to studentName
+        location: duty.schedules?.[0]?.room || "Default Room", // Map first schedule's room to location
+        status, // Current status
+        createdAt: new Date().toISOString(), // Dynamic creation time
       };
 
       setQrCodeValue(JSON.stringify(qrPayload));
