@@ -11,7 +11,7 @@ import {
 const QRCheckIn = ({ scannedData }) => {
   const [records, setRecords] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const API_URL = "http://192.168.100.237:8000/api/checkerAttendance";
+  const API_URL = "http://192.168.86.39:8000/api/checkerAttendance";
 
   // Fetch attendance records from API on mount
   useEffect(() => {

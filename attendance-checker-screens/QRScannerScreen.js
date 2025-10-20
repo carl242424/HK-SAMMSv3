@@ -10,7 +10,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import QRCheckIn from "./QRCheckIn"; // Make sure this path is correct
 
-const API_URL = "http://192.168.100.237:8000/api/checkerAttendance";
+const API_URL = "http://192.168.86.39:8000/api/checkerAttendance";
 const PRIMARY_COLOR = "#00A4DF";
 
 export default function QRScannerScreen() {

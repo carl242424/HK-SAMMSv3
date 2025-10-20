@@ -32,28 +32,29 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    // ❌ Check if user is inactive
     if (user.status && user.status.toLowerCase() === "inactive") {
-      // Send email notifying deactivation
       await transporter.sendMail({
-        from: EMAIL_USER,
+        from: process.env.EMAIL_USER,
         to: user.email,
         subject: "Account Deactivated",
         text: `Hello ${user.username},\n\nYour account has been deactivated. Please contact admin for reactivation.`,
       });
-
       return res.status(403).json({ message: "Your account is deactivated. Check your email." });
     }
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) return res.status(401).json({ message: "Invalid password" });
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.status(200).json({
       message: "Login successful",
       token,
-      role: user.role || "unknown",
+      role: user.role,
+      username: user.username,
+      employeeId: user.employeeId || "N/A",
+      email: user.email,
+      status: user.status,
     });
   } catch (error) {
     console.error("❌ Login error:", error);

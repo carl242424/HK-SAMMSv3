@@ -39,7 +39,7 @@ const ROOMS = [
   "408", "409",
 ];
 
-const API_URL = "http://192.168.100.237:8000/api/attendance"; // Update to match your backend port
+const API_URL = "http://192.168.86.39:8000/api/attendance"; // Update to match your backend port
 
 const AttendanceEncoding = () => {
   const [studentName, setStudentName] = useState("");

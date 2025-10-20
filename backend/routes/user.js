@@ -1,3 +1,4 @@
+
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
@@ -28,32 +29,17 @@ const authMiddleware = (req, res, next) => {
 // Fetch logged-in user's profile
 router.get("/profile", authMiddleware, async (req, res) => {
   try {
-    const userId = req.user._id;
-    console.log("Fetching profile for userId:", userId); // Log userId
-    const user = await User.findById(userId).select('_id employeeId username email role status');
-
+    console.log("Fetching profile for userId:", req.user._id);
+    const user = await User.findById(req.user._id).select("-password");
     if (!user) {
-      console.error("User not found in database for ID:", userId);
+      console.error("User not found for userId:", req.user._id);
       return res.status(404).json({ message: "User not found" });
     }
-
-    if (user.role !== "admin") {
-      console.error("Access denied for userId:", userId, "Role:", user.role);
-      return res.status(403).json({ message: "Access denied. Admin only." });
-    }
-
-    console.log("Returning profile:", user); // Log user data
-    res.status(200).json({
-      _id: user._id,
-      employeeId: user.employeeId || "N/A",
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-    });
+    console.log("Returning profile:", user);
+    res.json(user);
   } catch (err) {
-    console.error("Error fetching profile:", err.message);
-    res.status(500).json({ message: "Failed to fetch profile" });
+    console.error("Profile fetch error:", err.message);
+    res.status(500).json({ message: "Server error" });
   }
 });
 // Fetch all admin users

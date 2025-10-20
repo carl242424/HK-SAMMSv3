@@ -17,7 +17,7 @@ const COURSES = [
   "BS CRIMINOLOGY", "BS CIVIL ENGINEERING", "BS INFORMATION TECHNOLOGY", "BS NURSING"
 ];
 const DUTY_TYPES = ["Student Facilitator", "Attendance Checker"];
-const URL="http://192.168.100.237:8000"
+
 export default function ManageAccounts() {
   const [scholars, setScholars] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,7 +34,7 @@ export default function ManageAccounts() {
 
   const fetchScholars = async () => {
     try {
-      const response = await fetch("http://192.168.100.237:8000/api/scholars");
+      const response = await fetch("http://192.168.86.39:8000/api/scholars");
       const data = await response.json();
       setScholars(data);
     } catch (err) {
@@ -48,14 +48,14 @@ const saveScholar = async (data, isEditing) => {
   try {
     if (isEditing && editIndex !== null) {
       // Update existing scholar
-      await fetch(`http://192.168.100.237:8000/api/scholars/${scholars[editIndex]._id}`, {
+      await fetch(`http://192.168.86.39:8000/api/scholars/${scholars[editIndex]._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
     } else {
       // Create new scholar (backend auto-creates user account)
-      await fetch("http://192.168.100.237:8000/api/scholars", {
+      await fetch("http://192.168.86.39:8000/api/scholars", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -90,7 +90,7 @@ const toggleScholarStatus = async (scholar) => {
 
   try {
     const response = await fetch(
-      `http://192.168.100.237:8000/api/scholars/${scholarId}/status`,
+      `http://192.168.86.39:8000/api/scholars/${scholarId}/status`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

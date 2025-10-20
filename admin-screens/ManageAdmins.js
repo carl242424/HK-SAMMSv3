@@ -13,7 +13,7 @@ import AdminModalForm from "../components/AdminModalForm";
 import AdminTable from "../components/AdminTable";
 
 const PRIMARY_COLOR = "#00A4DF";
-const API_URL = "http://192.168.100.237:8000/api/users";
+const API_URL = "http://192.168.86.39:8000/api/users";
 
 export default function ManageAdmins() {
   const [admins, setAdmins] = useState([]);
