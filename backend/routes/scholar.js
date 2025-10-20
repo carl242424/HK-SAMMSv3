@@ -38,6 +38,7 @@ router.get('/', async (req, res) => {
 });
 
 // ✅ Add new scholar + auto-create user + send welcome email
+// ✅ Add new scholar + auto-create user + send welcome email
 router.post('/', async (req, res) => {
   const { name, id, email, year, course, duty, password, role } = req.body;
 
@@ -48,35 +49,41 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ message: 'All fields are required (name, id, email, year, course, duty, password)' });
   }
 
-  // Validate role
-  const validRoles = ['admin', 'checker', 'facilitator'];
-  const userRole = role && validRoles.includes(role) ? role : 'checker';
+  // ✅ Automatically determine role based on duty name
+let userRole = 'checker'; // default fallback
+
+if (role && ['admin', 'checker', 'facilitator'].includes(role.toLowerCase())) {
+  userRole = role.toLowerCase();
+} else if (duty) {
+  const dutyLower = duty.toLowerCase();
+  if (dutyLower.includes('facilitator')) userRole = 'facilitator';
+  else if (dutyLower.includes('admin')) userRole = 'admin';
+  else if (dutyLower.includes('checker')) userRole = 'checker';
+}
+
+console.log(`🧠 Mapped duty "${duty}" → role "${userRole}"`);
 
   try {
-    // 1️⃣ Check if scholar already exists
     const existingScholar = await Scholar.findOne({ $or: [{ id }, { email }] });
     if (existingScholar) {
       console.error('❌ Scholar already exists with ID or email:', { id, email });
       return res.status(400).json({ message: 'Scholar with this ID or email already exists' });
     }
 
-    // 2️⃣ Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username: id }, { employeeId: id }] });
     if (existingUser) {
       console.error('❌ User already exists with email, username, or employeeId:', { email, id });
       return res.status(400).json({ message: 'User with this email or ID already exists' });
     }
 
-    // 3️⃣ Create scholar
     const newScholar = new Scholar({ name, id, email, year, course, duty, status: 'Active' });
     const savedScholar = await newScholar.save();
     console.log('✅ Scholar created:', savedScholar);
 
-    // 4️⃣ Create new user
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       username: id.toString(),
-      employeeId: userRole === 'admin' ? id.toString() : undefined, // ✅ null for checker/facilitator
+      employeeId: userRole === 'admin' ? id.toString() : undefined,
       email,
       password: hashedPassword,
       role: userRole,
@@ -86,7 +93,6 @@ router.post('/', async (req, res) => {
     await newUser.save();
     console.log(`✅ User created for ${email} with username: ${id}, role: ${userRole}, employeeId: ${newUser.employeeId}`);
 
-    // 5️⃣ Send welcome email
     try {
       await transporter.sendMail({
         from: `"HK-SAMMS" <${EMAIL_USER}>`,

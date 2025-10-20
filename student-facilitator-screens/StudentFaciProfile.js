@@ -1,29 +1,139 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
-const StudentFaciProfile = () => {
+const StudentFaciProfile = ({ navigation }) => {
+  const [scholar, setScholar] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchScholarProfile = async () => {
+    try {
+      console.log('📡 Initiating fetchScholarProfile...');
+
+      // Retrieve token and username from AsyncStorage
+      const token = await AsyncStorage.getItem('token');
+      const username = await AsyncStorage.getItem('username');
+      if (!token) {
+        console.error('❌ No token found in AsyncStorage');
+        setError('No authentication token found');
+        setLoading(false);
+        return;
+      }
+      if (!username) {
+        console.error('❌ No username found in AsyncStorage');
+        setError('No username found');
+        setLoading(false);
+        return;
+      }
+      console.log('🔑 Token retrieved:', token);
+      console.log('🆔 Username retrieved:', username);
+
+      // API call to fetch scholar by id (username)
+      const apiUrl = 'http://192.168.86.39:8000/api/scholars';
+      const response = await axios.get(`${apiUrl}/${username}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('📥 API Response:', response.data);
+
+      if (response.data.exists) {
+        setScholar(response.data.scholar);
+        console.log('✅ Scholar data fetched:', response.data.scholar);
+      } else {
+        console.error('❌ Scholar not found for username:', username);
+        setError('Scholar not found');
+      }
+    } catch (err) {
+      console.error('❌ Error fetching scholar profile:', err.message);
+      console.error('❌ Error details:', err.response?.data || err);
+      setError('Failed to fetch profile: ' + err.message);
+    } finally {
+      setLoading(false);
+      console.log('🏁 Fetch completed, loading set to false');
+    }
+  };
+
+  // Logout handler
+  const handleLogout = async () => {
+    try {
+      console.log('🔓 Initiating logout...');
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('role');
+      await AsyncStorage.removeItem('username');
+      console.log('✅ AsyncStorage cleared');
+
+      // Navigate to login screen, handling nested navigators
+      if (navigation.getParent()) {
+        navigation.getParent().reset({
+          index: 0,
+          routes: [{ name: 'Login' }], // Adjust to your actual login screen name
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }], // Adjust to your actual login screen name
+        });
+      }
+      console.log('✅ Navigated to Login');
+    } catch (err) {
+      console.error('❌ Logout error:', err.message);
+      Alert.alert('Error', 'Failed to log out: ' + err.message);
+    }
+  };
+
+  useEffect(() => {
+    console.log('🛠️ useEffect triggered for fetching scholar profile');
+    fetchScholarProfile();
+  }, []);
+
+  if (loading) {
+    console.log('⏳ Rendering loading state');
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    console.log('🚨 Rendering error state:', error);
+    return (
+      <View style={styles.container}>
+        <Text>Error: {error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchScholarProfile}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  console.log('🎨 Rendering profile with scholar data:', scholar);
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Student Facilitator Profile</Text>
 
       <View style={styles.infoBox}>
         <Text style={styles.label}>Student Name:</Text>
-        <Text style={styles.value}>John Doe</Text>
+        <Text style={styles.value}>{scholar?.name || 'N/A'}</Text>
 
         <Text style={styles.label}>Student ID:</Text>
-        <Text style={styles.value}>2025-001</Text>
+        <Text style={styles.value}>{scholar?.id || 'N/A'}</Text>
 
         <Text style={styles.label}>Year:</Text>
-        <Text style={styles.value}>3rd Year</Text>
+        <Text style={styles.value}>{scholar?.year || 'N/A'}</Text>
 
         <Text style={styles.label}>Course:</Text>
-        <Text style={styles.value}>BS Information Technology</Text>
+        <Text style={styles.value}>{scholar?.course || 'N/A'}</Text>
 
         <Text style={styles.label}>Duty Type:</Text>
-        <Text style={styles.value}>Student Facilitator</Text>
+        <Text style={styles.value}>{scholar?.duty || 'N/A'}</Text>
       </View>
 
-      <TouchableOpacity style={styles.logoutButton}>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </View>
@@ -68,6 +178,18 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  retryButton: {
+    backgroundColor: '#60a5fa',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

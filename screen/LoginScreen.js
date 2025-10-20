@@ -81,9 +81,11 @@ const LoginFormContent = ({ navigation }) => {
 
     if (response.ok && data.role) {
       await AsyncStorage.setItem("token", data.token);
-      await AsyncStorage.setItem("role", data.role.toLowerCase()); // Ensure lowercase
+      await AsyncStorage.setItem("role", data.role.toLowerCase());// Ensure lowercase
+      await AsyncStorage.setItem("username", data.username); 
       console.log("Stored token:", data.token);
       console.log("Stored role:", data.role.toLowerCase());
+      console.log("🆔 Stored username:", data.username);
 
       if (data.role.toLowerCase() === "admin") {
         navigation.reset({
