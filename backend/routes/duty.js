@@ -5,6 +5,8 @@ const Duty = require("../models/duty");
 // Get all duties
 router.get('/', async (req, res) => {
   try {
+    const query = req.query.id ? { id: req.query.id } : {};
+    console.log('Duty query:', query);
     const duties = await Duty.find();
     console.log('Fetched duties from database:', duties);
     res.json(duties);

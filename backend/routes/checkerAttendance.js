@@ -4,6 +4,8 @@ const CheckerAttendance = require('../models/checkerAttendance');
 
 router.get('/', async (req, res) => {
   try {
+    const query = req.query.studentId ? { studentId: req.query.studentId } : {};
+    console.log('Attendance query:', query);
     const records = await CheckerAttendance.find();
     res.json(records);
   } catch (error) {
@@ -13,6 +15,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const query = req.query.studentId ? { studentId: req.query.studentId } : {};
     const newRecord = new CheckerAttendance(req.body);
     const savedRecord = await newRecord.save();
     res.status(201).json(savedRecord);
