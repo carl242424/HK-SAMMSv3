@@ -39,7 +39,8 @@ const ROOMS = [
   "408", "409",
 ];
 
-const API_URL = "http://192.168.86.39:8000/api/attendance"; // Update to match your backend port
+const API_URL = "http://192.168.86.39:8000/api/attendance";
+const DUTIES_API_URL = "http://192.168.86.39:8000/api/duties";
 
 const AttendanceEncoding = () => {
   const [studentName, setStudentName] = useState("");
@@ -87,29 +88,46 @@ const AttendanceEncoding = () => {
       setYearLevel(null);
       setCourse(null);
       setDutyType(null);
+      setRoom(null);
     }
   }, [studentId]);
 
-  // Fetch student data for auto-fill
+  // Fetch student data for auto-fill from duties
   const fetchStudentData = async (id) => {
     try {
-      const response = await axios.get(`${API_URL}/student/${id}`);
-      const record = response.data;
-      setStudentName(record.studentName || "");
-      setYearLevel(record.yearLevel || null);
-      setCourse(record.course || null);
-      setDutyType(record.dutyType || null);
-    } catch (error) {
-      if (error.response && error.response.status === 404) {
-        // No record found, keep fields empty
+      // Fetch duties for the student ID
+      const response = await axios.get(`${DUTIES_API_URL}?id=${encodeURIComponent(id)}`);
+      const duties = response.data;
+      console.log('Fetched duties:', duties);
+
+      // Find active duty for today (Wednesday)
+      const todayDayName = moment().format('dddd'); // e.g., "Wednesday"
+      const activeDuty = duties.find(duty => 
+        duty.id === id && 
+        duty.day === todayDayName && 
+        duty.status === 'Active'
+        
+      );
+
+      if (activeDuty) {
+        // Auto-fill fields from duty
+        setStudentName(activeDuty.name || "");
+        setYearLevel(activeDuty.year || null);
+        setCourse(activeDuty.course || null);
+        setDutyType(activeDuty.dutyType || "Student Facilitator");
+        setRoom(activeDuty.room || null); 
+      } else {
+        // Clear fields if no active duty is found
         setStudentName("");
         setYearLevel(null);
         setCourse(null);
         setDutyType(null);
-      } else {
-        Alert.alert("Error", "Failed to fetch student data. Please try again.");
-        console.error(error);
+        setRoom(null);
+        console.log(`No active duty found for student ID ${id} on ${todayDayName}`);
       }
+    } catch (error) {
+      Alert.alert("Error", "Failed to fetch student duty data. Please try again.");
+      console.error('Error fetching duty data:', error);
     }
   };
 
@@ -173,9 +191,11 @@ const AttendanceEncoding = () => {
   }, [searchQuery]);
 
   const formatStudentId = (text) => {
-    const digits = text.replace(/[^\d]/g, "");
-    if (digits.length > 12) return studentId;
+    // Remove any non-digit and non-hyphen characters
+    const cleaned = text.replace(/[^0-9-]/g, "");
+    if (cleaned.length > 14) return studentId;
     let formatted = "";
+    const digits = cleaned.replace(/[^0-9]/g, "");
     if (digits.length > 0) formatted = digits.substring(0, 2);
     if (digits.length > 2) formatted += "-" + digits.substring(2, 6);
     if (digits.length > 6) formatted += "-" + digits.substring(6, 12);
