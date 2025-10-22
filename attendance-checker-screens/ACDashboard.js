@@ -84,7 +84,7 @@ const ACDashboard = () => {
         //   ? `http://192.168.86.139:8000/api/checkerAttendance?studentId=${studentId}`
         //   : 'http://192.168.86.139:8000/api/checkerAttendance';
         const dutiesUrl = 'http://192.168.86.39:8000/api/duties';
-        const attendanceUrl = 'http://192.168.86.39:8000/api/checkerAttendance';
+        const attendanceUrl = 'http://192.168.86.39:8000/api/attendance';
 
         console.log('Fetching duties from:', dutiesUrl);
         console.log('Fetching attendance from:', attendanceUrl);

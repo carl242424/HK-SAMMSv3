@@ -12,30 +12,34 @@ import QRCheckIn from "./QRCheckIn"; // Make sure this path is correct
 
 const API_URL = "http://192.168.86.39:8000/api/checkerAttendance";
 const PRIMARY_COLOR = "#00A4DF";
+const SCAN_COOLDOWN = 10000; // 10 seconds in milliseconds
 
 export default function QRScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scannedData, setScannedData] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isScanLocked, setIsScanLocked] = useState(false); // New state for scan lock
 
   useEffect(() => {
     if (!permission) requestPermission();
   }, [permission]);
 
   const handleBarcodeScanned = async ({ data }) => {
+    if (isScanLocked) return; // Exit if scan is locked
+
     console.log("Raw QR data:", data); // Debug raw QR data
+    setIsScanLocked(true); // Lock scanning
+    setIsSaving(true);
+
     try {
       const parsed = JSON.parse(data); // Expects structured JSON from QR
       setScannedData(parsed);
-      setIsSaving(true);
 
       // Prepare check record with checker details
       const checkRecord = {
         studentId: parsed.studentId || `NO-ID-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         studentName: parsed.studentName || "N/A",
-        Duty:parsed.dutyType,
-        // checkerId: parsed.studentId, // Example checker ID (replace with dynamic value if needed)
-        // checkerName: "John Facilitator", // Example checker name (replace with dynamic value if needed)
+        Duty: parsed.dutyType,
         checkInTime: new Date(),
         location: parsed.location || "Room 101",
         status: "Present",
@@ -55,12 +59,16 @@ export default function QRScannerScreen() {
       } else {
         Alert.alert("❌ Failed", result.message || "Something went wrong");
       }
-
-      setIsSaving(false);
     } catch (error) {
       console.log("QR parse error:", error);
       Alert.alert("⚠️ Invalid QR", "This QR code is not valid or unreadable.");
+    } finally {
       setIsSaving(false);
+      // Unlock scanning after 10 seconds
+      setTimeout(() => {
+        setIsScanLocked(false);
+        setScannedData(null); // Reset scanned data to allow new scans
+      }, SCAN_COOLDOWN);
     }
   };
 
@@ -80,10 +88,12 @@ export default function QRScannerScreen() {
       <CameraView
         style={styles.camera}
         facing="back"
-        onBarcodeScanned={scannedData ? undefined : handleBarcodeScanned}
+        onBarcodeScanned={isScanLocked || scannedData ? undefined : handleBarcodeScanned} // Disable scanning during lock or if data is already scanned
       >
         <View style={styles.overlay}>
-          <Text style={styles.scanText}>Scan Scholar Duty QR</Text>
+          <Text style={styles.scanText}>
+            {isScanLocked ? "Please wait 10 seconds..." : "Scan Scholar Duty QR"}
+          </Text>
         </View>
       </CameraView>
 
@@ -97,12 +107,16 @@ export default function QRScannerScreen() {
       {scannedData && !isSaving && (
         <>
           <QRCheckIn scannedData={scannedData} />
-
           <TouchableOpacity
             style={[styles.button, { backgroundColor: PRIMARY_COLOR, marginTop: 15, marginHorizontal: 15 }]}
-            onPress={() => setScannedData(null)}
+            onPress={() => {
+              if (!isScanLocked) setScannedData(null); // Allow manual reset only if not locked
+            }}
+            disabled={isScanLocked} // Disable button during cooldown
           >
-            <Text style={{ color: "white" }}>Scan Again</Text>
+            <Text style={{ color: "white" }}>
+              {isScanLocked ? "Locked (Wait 10s)" : "Scan Again"}
+            </Text>
           </TouchableOpacity>
         </>
       )}

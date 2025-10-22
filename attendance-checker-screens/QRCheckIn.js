@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   StyleSheet,
 } from "react-native";
@@ -22,7 +21,7 @@ const QRCheckIn = ({ scannedData }) => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json(); // Use json() directly
+        const data = await response.json();
         setRecords(data);
       } catch (error) {
         console.error("Error fetching records:", error);
@@ -31,7 +30,7 @@ const QRCheckIn = ({ scannedData }) => {
     fetchRecords();
   }, []);
 
-  // Auto-add scanned QR data when received
+  // Update records when new scannedData is received
   useEffect(() => {
     if (scannedData) {
       const newRecord = {
@@ -41,29 +40,30 @@ const QRCheckIn = ({ scannedData }) => {
         checkerName: "John Facilitator", // Example checker name (replace with dynamic value if needed)
         checkInTime: new Date(),
         location: scannedData.location || "Room 101",
-        status: "Pending",
+        status: "Present", // Match status from QRScannerScreen
+        dutyType: scannedData.dutyType || "N/A",
       };
 
-      const postRecord = async () => {
+      setRecords((prev) => {
+        // Prevent adding duplicate records by checking studentId
+        const exists = prev.some((r) => r.studentId === newRecord.studentId && r.checkInTime === newRecord.checkInTime);
+        return exists ? prev : [newRecord, ...prev];
+      });
+
+      // Refresh records from API to ensure sync
+      const fetchRecords = async () => {
         try {
-          const response = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(newRecord),
-          });
+          const response = await fetch(API_URL);
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          const result = await response.json();
-          setRecords((prev) => {
-            const exists = prev.some((r) => r.studentId === newRecord.studentId);
-            return exists ? prev : [newRecord, ...prev];
-          });
+          const data = await response.json();
+          setRecords(data);
         } catch (error) {
-          console.error("Error posting record:", error);
+          console.error("Error refreshing records:", error);
         }
       };
-      postRecord();
+      fetchRecords();
     }
   }, [scannedData]);
 
@@ -105,7 +105,7 @@ const QRCheckIn = ({ scannedData }) => {
         {filteredRecords.length > 0 ? (
           filteredRecords.map((r, i) => (
             <View
-              key={i}
+              key={`${r.studentId}-${r.checkInTime}-${i}`} // Unique key with index fallback
               style={[
                 styles.row,
                 { backgroundColor: i % 2 === 0 ? "#f9f9f9" : "#fff" },
