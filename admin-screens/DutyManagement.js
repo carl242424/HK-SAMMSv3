@@ -83,18 +83,25 @@ export default function DutyManagement() {
   };
 
   const checkScheduleOverlap = (newSchedules, existingDuties, scholarId, isEditing) => {
-    console.log("Checking database overlaps for schedules:", newSchedules);
+    console.log("Checking overlaps for scholar:", scholarId, "Schedules:", newSchedules);
+
+    // Filter duties to only those belonging to the same scholar
+    const sameScholarDuties = existingDuties.filter((d) => d.id === scholarId);
+
     return newSchedules.some((newSched, index) => {
       console.log(`Checking new schedule ${index + 1}:`, newSched);
       if (!newSched.day || !newSched.startTime || !newSched.endTime) {
         console.log("Skipping incomplete schedule");
         return false;
       }
-      return existingDuties.some((duty) => {
-        if (isEditing && duty.id === scholarId) {
-          console.log(`Skipping duty for same scholar (editing): ${duty.id}`);
+
+      return sameScholarDuties.some((duty) => {
+        // Skip the duty being edited (if editing)
+        if (isEditing && duty._id === newSchedules[index]?._id) {
+          console.log(`Skipping duty for editing: ${duty._id}`);
           return false;
         }
+
         const [startTime, endTime] = duty.time.split(" - ");
         const overlap = doTimeRangesOverlap(
           newSched.day,
@@ -121,14 +128,12 @@ export default function DutyManagement() {
     const hasAccount = await validateScholarAccount(duty.id);
     console.log("Account validation result:", hasAccount);
     if (!hasAccount) {
-      console.log("Throwing error for unknown account");
       throw new Error("Unknown account. Please register first.");
     }
 
-    // Check for overlaps with existing duties
+    // Check for overlaps with existing duties for the same scholar
     if (checkScheduleOverlap(duty.schedules, duties, duty.id, isEditing)) {
-      console.log("Throwing overlap error");
-      throw new Error("The selected schedule overlaps with another. Please choose a different time slot.");
+      throw new Error("The selected schedule overlaps with another for this scholar. Please choose a different time slot.");
     }
 
     const dutiesToSave = duty.schedules.map((s) => ({
@@ -146,11 +151,11 @@ export default function DutyManagement() {
     console.log("Data to save:", dutiesToSave);
 
     try {
-      if (isEditing && editIndex !== null) {
+      if (isEditing) {
         // Delete existing duties for the scholar
-        const existingDuties = duties.filter(d => d.id === duty.id);
+        const existingDuties = duties.filter((d) => d.id === duty.id);
         await Promise.all(
-          existingDuties.map(d =>
+          existingDuties.map((d) =>
             d._id ? axios.delete(`http://192.168.86.39:8000/api/duties/${d._id}`) : Promise.resolve()
           )
         );
@@ -166,9 +171,9 @@ export default function DutyManagement() {
       const savedDuties = responses.map((r) => r.data);
       console.log("Saved duties:", savedDuties);
 
-      if (isEditing && editIndex !== null) {
+      if (isEditing) {
         // Replace all duties for the scholar in the UI
-        const updatedDuties = duties.filter(d => d.id !== duty.id);
+        const updatedDuties = duties.filter((d) => d.id !== duty.id);
         setDuties([...updatedDuties, ...savedDuties]);
       } else {
         setDuties((prevDuties) => [...prevDuties, ...savedDuties]);

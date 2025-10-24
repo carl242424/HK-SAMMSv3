@@ -8,7 +8,6 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
-
 const { JWT_SECRET, EMAIL_USER, EMAIL_PASS } = process.env;
 
 // Nodemailer transporter
@@ -62,8 +61,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-
-
 // ---------------- SEND OTP ----------------
 router.post("/forgot-password", async (req, res) => {
   try {
@@ -91,7 +88,6 @@ router.post("/forgot-password", async (req, res) => {
 });
 
 // ---------------- VERIFY OTP ----------------
-// ---------------- VERIFY CODE ----------------
 router.post("/verify-code", async (req, res) => {
   try {
     const { email, code } = req.body;
@@ -118,7 +114,6 @@ router.post("/verify-code", async (req, res) => {
   }
 });
 
-
 // ---------------- RESET PASSWORD ----------------
 router.post("/reset-password", async (req, res) => {
   try {
@@ -143,6 +138,15 @@ router.post("/reset-password", async (req, res) => {
 
     const updatedUser = await user.save();
     console.log("✅ Password successfully updated for:", updatedUser.email);
+
+    // Send confirmation email
+    await transporter.sendMail({
+      from: EMAIL_USER,
+      to: email,
+      subject: "Password Reset Confirmation",
+      text: `Hello ${user.username},\n\nYour password has been successfully reset. If you did not initiate this change, please contact our support team immediately.\n\nBest regards,\nThe Support Team`,
+    });
+    console.log("📧 Password reset confirmation email sent to:", email);
 
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {

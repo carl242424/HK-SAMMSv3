@@ -1,9 +1,11 @@
+
+
+
 import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   StyleSheet,
 } from "react-native";
@@ -11,33 +13,74 @@ import {
 const QRCheckIn = ({ scannedData }) => {
   const [records, setRecords] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const API_URL = "http://192.168.86.39:8000/api/faci-attendance";
 
-  // Auto-add scanned QR data when received
+  // Fetch attendance records from API on mount
+  useEffect(() => {
+    const fetchRecords = async () => {
+      try {
+        const response = await fetch(API_URL);
+        console.log('Response status:', response.status); // Keep status log
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setRecords(data);
+      } catch (error) {
+        console.error("Error fetching records:", error);
+      }
+    };
+    fetchRecords();
+  }, []);
+
+  // Update records when new scannedData is received
   useEffect(() => {
     if (scannedData) {
       const newRecord = {
-        id: scannedData.id || `NO-ID-${Date.now()}`,
-        name: scannedData.name || "N/A",
+        studentId: scannedData.studentId || `NO-ID-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        studentName: scannedData.studentName || "N/A",
+        checkerId: "FAC001", // Example checker ID (replace with dynamic value if needed)
+        checkerName: "John Facilitator", // Example checker name (replace with dynamic value if needed)
+        checkInTime: new Date(),
+        location: scannedData.location || "Room 101",
+        status: "Present", // Match status from QRScannerScreen
         dutyType: scannedData.dutyType || "N/A",
-        schedules: scannedData.schedules || [],
-        status: scannedData.status || "Active",
-        time: new Date().toLocaleString(),
       };
 
-      // Prevent duplicates by ID
       setRecords((prev) => {
-        const exists = prev.some((r) => r.id === newRecord.id);
+        // Prevent adding duplicate records by checking studentId
+        const exists = prev.some((r) => r.studentId === newRecord.studentId && r.checkInTime === newRecord.checkInTime);
         return exists ? prev : [newRecord, ...prev];
       });
+
+      // Refresh records from API to ensure sync
+      const fetchRecords = async () => {
+        try {
+          const response = await fetch(API_URL);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          setRecords(data);
+        } catch (error) {
+          console.error("Error refreshing records:", error);
+        }
+      };
+      fetchRecords();
     }
   }, [scannedData]);
 
-  // Filter records by search input
-  const filteredRecords = records.filter(
-    (r) =>
-      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter records by search input with defensive checks
+  const filteredRecords = records.filter((r) => {
+    const studentName = r.studentName || "";
+    const studentId = r.studentId || "";
+    return (
+      (typeof studentName === "string" &&
+        studentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (typeof studentId === "string" &&
+        studentId.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  });
 
   return (
     <View style={styles.container}>
@@ -65,17 +108,17 @@ const QRCheckIn = ({ scannedData }) => {
         {filteredRecords.length > 0 ? (
           filteredRecords.map((r, i) => (
             <View
-              key={i}
+              key={`${r.studentId}-${r.checkInTime}-${i}`} // Unique key with index fallback
               style={[
                 styles.row,
                 { backgroundColor: i % 2 === 0 ? "#f9f9f9" : "#fff" },
               ]}
             >
-              <Text style={styles.cell}>{r.id}</Text>
-              <Text style={styles.cell}>{r.name}</Text>
-              <Text style={styles.cell}>{r.dutyType}</Text>
+              <Text style={styles.cell}>{r.studentId}</Text>
+              <Text style={styles.cell}>{r.studentName}</Text>
+              <Text style={styles.cell}>{r.dutyType || "N/A"}</Text>
               <Text style={styles.cell}>{r.status}</Text>
-              <Text style={styles.cell}>{r.time}</Text>
+              <Text style={styles.cell}>{new Date(r.checkInTime).toLocaleString()}</Text>
             </View>
           ))
         ) : (
@@ -136,3 +179,4 @@ const styles = StyleSheet.create({
 });
 
 export default QRCheckIn;
+

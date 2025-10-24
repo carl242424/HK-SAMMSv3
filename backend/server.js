@@ -11,7 +11,7 @@ const dutyRoutes = require("./routes/duty");
 const userRoutes = require("./routes/user");
 const attendanceRoutes = require('./routes/attendance');
 const checkerAttendanceRoutes = require('./routes/checkerAttendance');
-
+const FaciAttendanceRoutes = require('./routes/FaciAttendance');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -36,6 +36,7 @@ app.use("/api/duties", dutyRoutes);
 app.use("/api/users", userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/checkerAttendance', checkerAttendanceRoutes);
+app.use('/api/faci-attendance', FaciAttendanceRoutes);
 
 
 
