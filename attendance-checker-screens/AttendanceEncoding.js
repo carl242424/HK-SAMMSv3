@@ -39,8 +39,8 @@ const ROOMS = [
   "408", "409",
 ];
 
-const API_URL = "http://192.168.86.39:8000/api/attendance";
-const DUTIES_API_URL = "http://192.168.86.39:8000/api/duties";
+const API_URL = "http://192.168.1.7:8000/api/attendance";
+const DUTIES_API_URL = "http://192.168.1.7:8000/api/duties";
 
 const AttendanceEncoding = () => {
   const [studentName, setStudentName] = useState("");
@@ -131,59 +131,89 @@ const AttendanceEncoding = () => {
     }
   };
 
-  // Handle save with duplicate and 40-minute checks
-  const handleSave = async () => {
-    try {
-      const idPattern = /^\d{2}-\d{4}-\d{6}$/;
-      const trimmedName = studentName?.trim();
-      if (!trimmedName || !studentId || !yearLevel || !course || !dutyType || !room) {
-        Alert.alert("Error", "Please fill out all fields.");
-        return;
-      }
+ const handleSave = async () => {
+    try {
+      const idPattern = /^\d{2}-\d{4}-\d{6}$/;
+      const trimmedName = studentName?.trim();
 
-      if (!idPattern.test(studentId)) {
-        Alert.alert("Invalid Format", "Student ID must follow 00-0000-000000 format (2-4-6 digits).");
-        return;
-      }
+      // 1. Basic Check: Always require Room, Class Status, and Facilitator Status
+      if (!room || !classStatus || !facilitatorStatus) {
+        Alert.alert("Error", "Please select Room, Class Status, and Facilitator Status.");
+        return;
+      }
 
-      const newRecord = {
-        studentName: trimmedName,
-        studentId,
-        yearLevel,
-        course,
-        dutyType,
-        room,
-        classStatus,
-        facilitatorStatus,
-        encodedTime: moment().format("MM/DD/YYYY hh:mm A"),
-      };
+      // 2. Specific Checks ONLY for "With Facilitator"
+      if (facilitatorStatus !== "No Facilitator") {
+          // These student fields are REQUIRED when there is a Facilitator
+          if (!trimmedName || !studentId || !yearLevel || !course || !dutyType) {
+              Alert.alert("Error", "Please fill out all student fields for 'With Facilitator' status.");
+              return;
+          }
+          // ID format check
+          if (!idPattern.test(studentId)) {
+            Alert.alert("Invalid Format", "Student ID must follow 00-0000-000000 format (2-4-6 digits).");
+            return;
+          }
+      }
 
-      // Send record to backend
-      const response = await axios.post(API_URL, newRecord);
-      const savedRecord = { ...response.data, id: response.data._id };
-      setRecords((prev) => [...prev, savedRecord]);
-      setLastRecord(savedRecord);
-      setQrModalVisible(true);
-      setFormModalVisible(false);
+      // 3. Create the base new record
+      let newRecord = {
+        studentName: trimmedName || "", // Use empty string if no input
+        studentId: studentId || "",
+        yearLevel: yearLevel || null,
+        course: course || null,
+        dutyType: dutyType || null,
+        room,
+        classStatus, // Retains the user-selected value
+        facilitatorStatus,
+        encodedTime: moment().format("MM/DD/YYYY hh:mm A"),
+      };
 
-      // Reset form
-      setStudentName("");
-      setStudentId("");
-      setYearLevel(null);
-      setCourse(null);
-      setDutyType(null);
-      setRoom(null);
-      setClassStatus(null);
-      setFacilitatorStatus(null);
-    } catch (error) {
-      if (error.response && error.response.status === 400 && error.response.data.error) {
-        Alert.alert("Error", error.response.data.error); // Show backend error (e.g., duplicate check-in)
-      } else {
-        Alert.alert("Error", "Failed to save record. Please try again.");
-      }
-      console.error(error);
-    }
-  };
+      // 4. Apply 'N/A' overrides for "No Facilitator"
+      if (facilitatorStatus === "No Facilitator") {
+        newRecord = {
+            ...newRecord, 
+            studentName: "N/A",
+            studentId: "N/A",
+            yearLevel: "N/A",
+            course: "N/A",
+            dutyType: "N/A",
+            // 🛑 classStatus is intentionally NOT set to "N/A" here
+        };
+      }
+      
+      // Send record to backend
+      const response = await axios.post(API_URL, newRecord);
+      const savedRecord = { ...response.data, id: response.data._id };
+      // ... (rest of the save and reset logic)
+      setRecords((prev) => [...prev, savedRecord]);
+      setLastRecord(savedRecord);
+      if (facilitatorStatus !== "No Facilitator") {
+        setQrModalVisible(true);
+      }
+      setFormModalVisible(false);
+
+      // Reset form
+      setStudentName("");
+      setStudentId("");
+      setYearLevel(null);
+      setCourse(null);
+      setDutyType(null);
+      setRoom(null);
+      setClassStatus(null);
+      setFacilitatorStatus(null);
+      if (facilitatorStatus === "No Facilitator") {
+        Alert.alert("Success", "Attendance record saved. No QR code generated for 'No Facilitator' status.");
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 400 && error.response.data.error) {
+        Alert.alert("Error", error.response.data.error);
+      } else {
+        Alert.alert("Error", "Failed to save record. Please try again.");
+      }
+      console.error(error);
+    }
+  };
 
   // Update search
   useEffect(() => {
