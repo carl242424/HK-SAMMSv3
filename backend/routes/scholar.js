@@ -329,6 +329,24 @@ router.get('/test-email', async (req, res) => {
     console.error('❌ Test email failed:', error);
     res.status(500).json({ message: 'Failed to send test email', error: error.message });
   }
+  
 });
+// GET /api/scholars/count-by-month?year=2025&month=10
+router.get('/count-by-month', async (req, res) => {
+  try {
+    const { year, month } = req.query;
+    if (!year || !month) return res.status(400).json({ message: 'year and month required' });
 
+    const start = new Date(year, month - 1, 1); // 1st of month
+    const end = new Date(year, month, 0);       // last day of month
+
+    const count = await Scholar.countDocuments({
+      createdAt: { $gte: start, $lte: end }
+    });
+
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to count', error: err.message });
+  }
+});
 module.exports = router;

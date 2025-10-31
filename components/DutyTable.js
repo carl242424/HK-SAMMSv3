@@ -6,150 +6,256 @@ import {
   StyleSheet,
   ScrollView,
   useWindowDimensions,
+  Platform,
 } from "react-native";
 
 const DutyTable = ({ duties = [], onEdit, onView, onToggleStatus }) => {
   const { width: screenWidth } = useWindowDimensions();
 
-  const columnWidth = 140;
-  const actionWidth = 200;
-  const totalColumns = 6; // Name, Duty, Day, Time, Room, Status
-  const tableMinWidth = totalColumns * columnWidth + actionWidth;
+  // Fixed column widths
+  const COL_WIDTH = 150;
+  const ACTION_WIDTH = 240; // fits 3 buttons
+  const TOTAL_COLS = 6;
+  const TABLE_MIN_WIDTH = TOTAL_COLS * COL_WIDTH + ACTION_WIDTH;
+
+  // Refs for horizontal scroll sync
+  const headerScrollRef = React.useRef<ScrollView>(null);
+  const bodyScrollRef = React.useRef<ScrollView>(null);
+
+  // Reusable Cell with wrapping
+  const Cell = ({ children, style = {} }: any) => (
+    <View style={[styles.cell, { width: COL_WIDTH, minWidth: COL_WIDTH }, style]}>
+      <Text style={styles.cellText} numberOfLines={3}>
+        {children}
+      </Text>
+    </View>
+  );
+
+  const ActionCell = ({ children }: any) => (
+    <View style={[styles.actionCell, { width: ACTION_WIDTH, minWidth: ACTION_WIDTH }]}>
+      {children}
+    </View>
+  );
+
+  // Sticky Header
+  const StickyHeader = () => (
+    <View style={styles.stickyHeaderContainer}>
+      <ScrollView
+        ref={headerScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(e) =>
+          bodyScrollRef.current?.scrollTo({
+            x: e.nativeEvent.contentOffset.x,
+            animated: false,
+          })
+        }
+      >
+        <View style={styles.headerRow}>
+          <Cell style={styles.header}>Student Name</Cell>
+          <Cell style={styles.header}>Duty Type</Cell>
+          <Cell style={styles.header}>Day</Cell>
+          <Cell style={styles.header}>Time</Cell>
+          <Cell style={styles.header}>Room</Cell>
+          <Cell style={styles.header}>Status</Cell>
+          <ActionCell>
+            <Text style={[styles.header, styles.actionHeader]}>Actions</Text>
+          </ActionCell>
+        </View>
+      </ScrollView>
+    </View>
+  );
+
+  // Body Rows
+  const Body = () => (
+    <View>
+      {duties.length > 0 ? (
+        duties.map((duty, index) => (
+          <View key={duty._id || index} style={styles.row}>
+            <Cell>{duty.name || "N/A"}</Cell>
+            <Cell>{duty.dutyType || "N/A"}</Cell>
+            <Cell>{duty.day || "N/A"}</Cell>
+            <Cell>{duty.time || "N/A"}</Cell>
+            <Cell>
+              {duty.room || (duty.dutyType === "Attendance Checker" ? "—" : "N/A")}
+            </Cell>
+            <Cell
+              style={{
+                color: duty.status === "Deactivated" ? "#d9534f" : "#28a745",
+              }}
+            >
+              {duty.status || "Active"}
+            </Cell>
+
+            {/* Action Buttons – 3 different colors */}
+            <ActionCell>
+              <TouchableOpacity
+                style={styles.viewBtn}
+                onPress={() => onView?.(duty)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnText}>View</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => onEdit?.(index)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnText}>Edit</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.statusBtn,
+                  {
+                    backgroundColor:
+                      duty.status === "Active" ? "#dc3545" : "#28a745",
+                  },
+                ]}
+                onPress={() => onToggleStatus?.(index)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnText}>
+                  {duty.status === "Active" ? "Deactivate" : "Re-Activate"}
+                </Text>
+              </TouchableOpacity>
+            </ActionCell>
+          </View>
+        ))
+      ) : (
+        <View style={styles.row}>
+          <Cell style={{ flex: 1, textAlign: "center" }}>No duties found</Cell>
+        </View>
+      )}
+    </View>
+  );
 
   return (
-    <ScrollView
-      horizontal={screenWidth < tableMinWidth}
-      style={{ width: "100%" }}
-      contentContainerStyle={{
-        minWidth: screenWidth < tableMinWidth ? tableMinWidth : "100%",
-        paddingRight: 16,
-      }}
-    >
-      <View style={[styles.tableContainer, { width: "100%" }]}>
-        {/* Header */}
-        <View style={[styles.row, styles.headerRow]}>
-          <Text style={[styles.cell, styles.header]}>Student Name</Text>
-          <Text style={[styles.cell, styles.header]}>Duty Type</Text>
-          <Text style={[styles.cell, styles.header]}>Day</Text>
-          <Text style={[styles.cell, styles.header]}>Time</Text>
-          <Text style={[styles.cell, styles.header]}>Room</Text>
-          <Text style={[styles.cell, styles.header]}>Status</Text>
-          <Text style={[styles.actionsCellHeader, styles.header]}>Actions</Text>
+    <View style={styles.container}>
+      {/* Sticky Header */}
+      <StickyHeader />
+
+      {/* Scrollable Body */}
+      <ScrollView
+        ref={bodyScrollRef}
+        style={styles.bodyScroll}
+        horizontal={screenWidth < TABLE_MIN_WIDTH}
+        showsHorizontalScrollIndicator={true}
+        scrollEventThrottle={16}
+        onScroll={(e) =>
+          headerScrollRef.current?.scrollTo({
+            x: e.nativeEvent.contentOffset.x,
+            animated: false,
+          })
+        }
+      >
+        <View
+          style={{
+            minWidth: screenWidth < TABLE_MIN_WIDTH ? TABLE_MIN_WIDTH : "100%",
+          }}
+        >
+          <Body />
         </View>
-
-        {duties.length > 0 ? (
-          duties.map((duty, index) => (
-            <View key={index} style={styles.row}>
-              <Text style={styles.cell}>{duty.name || "N/A"}</Text>
-              <Text style={styles.cell}>{duty.dutyType || "N/A"}</Text>
-              <Text style={styles.cell}>{duty.day || "N/A"}</Text>
-              <Text style={styles.cell}>{duty.time || "N/A"}</Text>
-              <Text style={styles.cell}>
-                {duty.room || (duty.dutyType === "Attendance Checker" ? "—" : "N/A")}
-              </Text>
-              <Text
-                style={[
-                  styles.cell,
-                  { color: duty.status === "Deactivated" ? "#d9534f" : "green" },
-                ]}
-              >
-                {duty.status || "Active"}
-              </Text>
-
-              {/* Actions */}
-              <View style={styles.actionsCell}>
-                <TouchableOpacity
-                  style={styles.viewBtn}
-                  onPress={() => onView && onView(duty)}
-                >
-                  <Text style={styles.btnText}>View</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => onEdit && onEdit(index)}
-                >
-                  <Text style={styles.btnText}>Edit</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.statusBtn,
-                    {
-                      backgroundColor:
-                        duty.status === "Active" ? "#d9534f" : "green",
-                    },
-                  ]}
-                  onPress={() => onToggleStatus && onToggleStatus(index)}
-                >
-                  <Text style={styles.btnText}>
-                    {duty.status === "Active" ? "Deactivate" : "Re-Activate"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        ) : (
-          <View style={styles.row}>
-            <Text style={[styles.cell, { flex: 1 }]}>No duties found</Text>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
+/* ──────────────────────────────── Styles ──────────────────────────────── */
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
+
+  // Sticky Header
+  stickyHeaderContainer: {
+    backgroundColor: "#f4f4f4",
+    borderBottomWidth: 1,
+    borderColor: "#ddd",
+    zIndex: 100,
+  },
+  headerRow: {
+    flexDirection: "row",
+    backgroundColor: "#f4f4f4",
+    paddingVertical: 10,
+  },
+
+  // Body
+  bodyScroll: { flex: 1 },
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderColor: "#ddd",
-    paddingVertical: 8,
+    borderColor: "#eee",
+    paddingVertical: 10,
+    backgroundColor: "#fff",
   },
-  headerRow: {
-    backgroundColor: "#f4f4f4",
-  },
+
+  // Cells
   cell: {
-    flex: 1,
-    minWidth: 140,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
+    justifyContent: "center",
   },
-  actionsCellHeader: {
-    width: 200,
-    paddingHorizontal: 6,
+  cellText: {
+    fontSize: 13,
+    lineHeight: 18,
+    ...(Platform.OS === "web" ? { wordBreak: "break-word" } : { flexShrink: 1 }),
   },
-  actionsCell: {
-    width: 200,
+
+  actionCell: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    gap: 8,
   },
+
+  // Header
   header: {
     fontWeight: "bold",
+    fontSize: 13,
+    color: "#333",
   },
+  actionHeader: {
+    textAlign: "center",
+    width: "100%",
+  },
+
+  // Action Buttons – Fixed Colors + Press Feedback
   btnText: {
     color: "#fff",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     textAlign: "center",
   },
   viewBtn: {
-    backgroundColor: "#0078d7",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    backgroundColor: "#007bff", // Blue
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: 4,
-    marginRight: 6,
+    minWidth: 60,
+    opacity: 1, // Critical
   },
   editBtn: {
-    backgroundColor: "#f0ad4e",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    backgroundColor: "#fd7e14", // Orange
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: 4,
-    marginRight: 6,
+    minWidth: 60,
+    opacity: 1,
   },
   statusBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: 4,
+    minWidth: 80,
+    opacity: 1, // Critical for dynamic color
   },
 });
 

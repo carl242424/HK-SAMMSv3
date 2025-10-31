@@ -1,6 +1,12 @@
-import React, { useState , useEffect} from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Alert,
 } from "react-native";
 import ScholarFormModal from "../components/ScholarFormModal";
 import ScholarViewModal from "../components/ScholarViewModal";
@@ -11,30 +17,46 @@ import * as Sharing from "expo-sharing";
 const PRIMARY_COLOR = "#00A4DF";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 const COURSES = [
-  "BS ACCOUNTANCY", "BS HOSPITALITY MANAGEMENT", "BS TOURISM MANAGEMENT",
-  "BSBA- MARKETING MANAGEMENT", "BSBA- BANKING & MICROFINANCE",
-  "BACHELOR OF ELEMENTARY EDUCATION", "BSED- ENGLISH", "BSED- FILIPINO",
-  "BS CRIMINOLOGY", "BS CIVIL ENGINEERING", "BS INFORMATION TECHNOLOGY", "BS NURSING"
+  "BS ACCOUNTANCY",
+  "BS HOSPITALITY MANAGEMENT",
+  "BS TOURISM MANAGEMENT",
+  "BSBA- MARKETING MANAGEMENT",
+  "BSBA- BANKING & MICROFINANCE",
+  "BACHELOR OF ELEMENTARY EDUCATION",
+  "BSED- ENGLISH",
+  "BSED- FILIPINO",
+  "BS CRIMINOLOGY",
+  "BS CIVIL ENGINEERING",
+  "BS INFORMATION TECHNOLOGY",
+  "BS NURSING",
 ];
 const DUTY_TYPES = ["Student Facilitator", "Attendance Checker"];
+
+const PAGE_SIZE = 10; // rows per page
 
 export default function ManageAccounts() {
   const [scholars, setScholars] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [form, setForm] = useState({
-    name: "", id: "", year: YEARS[0], course: COURSES[0], duty: DUTY_TYPES[0]
+    name: "",
+    id: "",
+    year: YEARS[0],
+    course: COURSES[0],
+    duty: DUTY_TYPES[0],
   });
   const [modalVisible, setModalVisible] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [viewScholar, setViewScholar] = useState(null);
-   
+
   useEffect(() => {
     fetchScholars();
   }, []);
 
   const fetchScholars = async () => {
     try {
-      const response = await fetch("http://192.168.86.39:8000/api/scholars");
+      const response = await fetch("http://192.168.1.7:8000/api/scholars");
       const data = await response.json();
       setScholars(data);
     } catch (err) {
@@ -43,86 +65,121 @@ export default function ManageAccounts() {
   };
 
   const updateForm = (field, value) =>
-    setForm(prevForm => ({ ...prevForm, [field]: value }));
-const saveScholar = async (data, isEditing) => {
-  try {
-    if (isEditing && editIndex !== null) {
-      // Update existing scholar
-      await fetch(`http://192.168.86.39:8000/api/scholars/${scholars[editIndex]._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-    } else {
-      // Create new scholar (backend auto-creates user account)
-      await fetch("http://192.168.86.39:8000/api/scholars", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      
+    setForm((prev) => ({ ...prev, [field]: value }));
+
+  const saveScholar = async (data, isEditing) => {
+    try {
+      if (isEditing && editIndex !== null) {
+        await fetch(
+          `http://192.168.1.7:8000/api/scholars/${scholars[editIndex]._id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          }
+        );
+      } else {
+        await fetch("http://192.168.1.7:8000/api/scholars", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+      }
+
+      resetForm();
+      fetchScholars();
+    } catch (err) {
+      Alert.alert("Error", "Failed to save scholar");
     }
-
-    resetForm();
-    fetchScholars(); // Refresh list
-  } catch (err) {
-    Alert.alert("Error", "Failed to save scholar");
-  }
-};
-
+  };
 
   const resetForm = () => {
-    setForm({ name: "", id: "", year: YEARS[0], course: COURSES[0], duty: DUTY_TYPES[0] });
+    setForm({
+      name: "",
+      id: "",
+      year: YEARS[0],
+      course: COURSES[0],
+      duty: DUTY_TYPES[0],
+    });
     setEditIndex(null);
     setModalVisible(false);
   };
 
-// ✅ Toggle status for scholar and refresh
-const toggleScholarStatus = async (scholar) => {
-  const scholarId = scholar._id; 
-  if (!scholarId) {
-    console.error("❌ No _id found for scholar:", scholar);
-    return Alert.alert("Error", "Invalid scholar ID");
-  }
-
-  const newStatus =
-    scholar.status.toLowerCase() === "Active" ? "Inactive" : "Active";
-
-  try {
-    const response = await fetch(
-      `http://192.168.86.39:8000/api/scholars/${scholarId}/status`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Failed to update status");
+  const toggleScholarStatus = async (scholar) => {
+    const scholarId = scholar._id;
+    if (!scholarId) {
+      return Alert.alert("Error", "Invalid scholar ID");
     }
 
-    const data = await response.json();
-    console.log("✅ Scholar status updated:", data);
+    const newStatus =
+      scholar.status.toLowerCase() === "active" ? "Inactive" : "Active";
 
-    Alert.alert("Success", `Scholar status changed to ${newStatus}`);
-    await fetchScholars(); // refresh the list after toggle
-  } catch (error) {
-    console.error("❌ Error updating scholar status:", error);
-    Alert.alert("Error", "Failed to update scholar status");
-  }
-};
+    try {
+      const response = await fetch(
+        `http://192.168.1.7:8000/api/scholars/${scholarId}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
 
-  const filteredScholars = scholars.filter(s =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update status");
+      }
 
-  // 🧾 Export to PDF
-  const exportToPDF = async (filteredScholars) => {
-    const escapeHtml = (text) => String(text || '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      Alert.alert("Success", `Scholar status changed to ${newStatus}`);
+      await fetchScholars();
+    } catch (error) {
+      Alert.alert("Error", "Failed to update scholar status");
+    }
+  };
+
+  /* ---------- SEARCH (ALL COLUMNS) ---------- */
+  const filteredScholars = useMemo(() => {
+    if (!searchQuery.trim()) return scholars;
+
+    const q = searchQuery.toLowerCase();
+    return scholars.filter((s) => {
+      return (
+        (s.name ?? "").toLowerCase().includes(q) ||
+        (s.id ?? "").toLowerCase().includes(q) ||
+        (s.email ?? "").toLowerCase().includes(q) ||
+        (s.year ?? "").toLowerCase().includes(q) ||
+        (s.course ?? "").toLowerCase().includes(q) ||
+        (s.duty ?? "").toLowerCase().includes(q) ||
+        String(s.remainingHours ?? "").includes(q) ||
+        (s.status ?? "").toLowerCase().includes(q) ||
+        (s.createdAt
+          ? new Date(s.createdAt).toLocaleDateString().toLowerCase().includes(q)
+          : false) ||
+        (s.updatedAt
+          ? new Date(s.updatedAt).toLocaleDateString().toLowerCase().includes(q)
+          : false)
+      );
+    });
+  }, [scholars, searchQuery]);
+
+  /* ---------- PAGINATION ---------- */
+  const totalPages = Math.max(1, Math.ceil(filteredScholars.length / PAGE_SIZE));
+  const pageScholars = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredScholars.slice(start, start + PAGE_SIZE);
+  }, [filteredScholars, currentPage]);
+
+  // keep page valid when filtering
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
+  /* ---------- PDF EXPORT (filtered list) ---------- */
+  const exportToPDF = async (list) => {
+    const escapeHtml = (text) =>
+      String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -144,14 +201,28 @@ const toggleScholarStatus = async (scholar) => {
           <p style="text-align:center;">Generated: ${new Date().toLocaleDateString()}</p>
           <table>
             <thead>
-              <tr><th>Name</th><th>ID</th><th>Year</th><th>Course</th><th>Duty</th><th>Hours Left</th><th>Status</th></tr>
+              <tr>
+                <th>Name</th><th>ID</th><th>Email</th><th>Year</th><th>Course</th>
+                <th>Duty</th><th>Hours Left</th><th>Status</th>
+              </tr>
             </thead>
             <tbody>
-              ${filteredScholars.length > 0
-                ? filteredScholars.map(s =>
-                    `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.id)}</td><td>${escapeHtml(s.year)}</td><td>${escapeHtml(s.course)}</td><td>${escapeHtml(s.duty)}</td><td>${s.remainingHours ?? 0}</td><td>${s.status}</td></tr>`
-                  ).join("")
-                : `<tr><td colspan="7" style="text-align:center;">No scholars found</td></tr>`
+              ${list.length
+                ? list
+                    .map(
+                      (s) => `<tr>
+                        <td>${escapeHtml(s.name)}</td>
+                        <td>${escapeHtml(s.id)}</td>
+                        <td>${escapeHtml(s.email)}</td>
+                        <td>${escapeHtml(s.year)}</td>
+                        <td>${escapeHtml(s.course)}</td>
+                        <td>${escapeHtml(s.duty)}</td>
+                        <td>${s.remainingHours ?? 0}</td>
+                        <td>${s.status}</td>
+                      </tr>`
+                    )
+                    .join("")
+                : `<tr><td colspan="8" style="text-align:center;">No scholars found</td></tr>`
               }
             </tbody>
           </table>
@@ -162,7 +233,7 @@ const toggleScholarStatus = async (scholar) => {
     try {
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf" });
       } else {
         Alert.alert("PDF Generated", `Saved at: ${uri}`);
       }
@@ -184,7 +255,7 @@ const toggleScholarStatus = async (scholar) => {
       </View>
 
       <TextInput
-        placeholder="Search scholar..."
+        placeholder="Search any column..."
         value={searchQuery}
         onChangeText={setSearchQuery}
         style={styles.search}
@@ -203,16 +274,64 @@ const toggleScholarStatus = async (scholar) => {
           </TouchableOpacity>
         </View>
 
+        {/* Table + Pagination */}
         <ScholarTable
-          scholars={filteredScholars}
+          scholars={pageScholars}
           onView={(scholar) => setViewScholar(scholar)}
           onEdit={(index) => {
-            setEditIndex(index);
-            setForm(filteredScholars[index]);
+            const realIndex = (currentPage - 1) * PAGE_SIZE + index;
+            setEditIndex(realIndex);
+            setForm(filteredScholars[realIndex]);
             setModalVisible(true);
           }}
-          onToggleStatus={toggleScholarStatus} // 👈 new handler
+          onToggleStatus={toggleScholarStatus}
         />
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <View style={styles.pagination}>
+            {/* Previous */}
+            <TouchableOpacity
+              disabled={currentPage === 1}
+              onPress={() => setCurrentPage(p => p - 1)}
+              style={[styles.pageBtn, currentPage === 1 && styles.disabledBtn]}
+            >
+              <Text style={styles.pageBtnText}>Previous</Text>
+            </TouchableOpacity>
+
+            {/* Clickable Page Numbers */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <TouchableOpacity
+                key={page}
+                onPress={() => setCurrentPage(page)}
+                style={[
+                  styles.pageNumBtn,
+                  currentPage === page && styles.activePageBtn
+                ]}
+                disabled={currentPage === page}
+              >
+                <Text style={[
+                  styles.pageNumText,
+                  currentPage === page && styles.activePageText
+                ]}>
+                  {page}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            {/* Next */}
+            <TouchableOpacity
+              disabled={currentPage === totalPages}
+              onPress={() => setCurrentPage(p => p + 1)}
+              style={[
+                styles.pageBtn,
+                currentPage === totalPages && styles.disabledBtn
+              ]}
+            >
+              <Text style={styles.pageBtnText}>Next</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       <ScholarFormModal
@@ -228,7 +347,7 @@ const toggleScholarStatus = async (scholar) => {
       <ScholarViewModal
         scholar={viewScholar}
         onClose={() => setViewScholar(null)}
-        onDeactivate={(index) => toggleScholarStatus(index)}
+        onDeactivate={toggleScholarStatus}
       />
     </View>
   );
@@ -236,11 +355,28 @@ const toggleScholarStatus = async (scholar) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   title: { fontSize: 20, fontWeight: "bold", marginTop: 30 },
-  createBtn: { backgroundColor: PRIMARY_COLOR, paddingVertical: 10, paddingHorizontal: 15, borderRadius: 6, marginTop: 30 },
+  createBtn: {
+    backgroundColor: PRIMARY_COLOR,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 6,
+    marginTop: 30,
+  },
   btnText: { color: "white", fontWeight: "600" },
-  search: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 8, marginBottom: 12 },
+  search: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 12,
+  },
   sectionTitle: { fontSize: 18, fontWeight: "600", marginVertical: 8 },
   sectionHeader: {
     flexDirection: "row",
@@ -255,4 +391,46 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   exportBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
+
+  /* Pagination */
+  pagination: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  pageBtn: {
+    backgroundColor: PRIMARY_COLOR,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  disabledBtn: {
+    backgroundColor: "#aaa",
+  },
+  pageBtnText: { color: "#fff", fontWeight: "600" },
+
+  // Clickable Page Numbers
+  pageNumBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 18,
+    backgroundColor: "#eee",
+    marginHorizontal: 4,
+  },
+  activePageBtn: {
+    backgroundColor: PRIMARY_COLOR,
+  },
+  pageNumText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#555",
+  },
+  activePageText: {
+    color: "#fff",
+  },
 });

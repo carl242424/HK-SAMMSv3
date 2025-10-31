@@ -1,166 +1,254 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  useWindowDimensions,
+  Platform,
+} from "react-native";
 
-const ScholarTable = ({ scholars = [], onEdit, onView, onToggleStatus }) => {
+const ScholarTable = ({ scholars = [], onEdit, onToggleStatus }) => {
   const { width: screenWidth } = useWindowDimensions();
 
-  const columnWidth = 120;
-  const actionWidth = 200;
-  const totalColumns = 8;
-  const tableMinWidth = totalColumns * columnWidth + actionWidth;
+  // ────── Column widths (same for header & body) ──────
+  const COL_WIDTH = 140;           // enough for wrapped text
+  const ACTION_WIDTH = 180;        // fits 2 buttons side-by-side
+  const TOTAL_COLS = 11;
+  const TABLE_MIN_WIDTH = TOTAL_COLS * COL_WIDTH + ACTION_WIDTH;
+
+  // ────── Reusable cell with wrapping ──────
+  const Cell = ({ children, style = {}, ...props }: any) => (
+    <View style={[styles.cell, { width: COL_WIDTH, minWidth: COL_WIDTH }, style]} {...props}>
+      <Text style={styles.cellText} numberOfLines={3}>
+        {children}
+      </Text>
+    </View>
+  );
+
+  const ActionCell = ({ children }: any) => (
+    <View style={[styles.actionCell, { width: ACTION_WIDTH, minWidth: ACTION_WIDTH }]}>
+      {children}
+    </View>
+  );
+
+  // ────── Refs for scroll sync ──────
+  const headerScrollRef = React.useRef<ScrollView>(null);
+  const bodyScrollRef = React.useRef<ScrollView>(null);
+
+  // ────── Header ──────
+  const Header = () => (
+    <View style={styles.headerRow}>
+      <Cell style={styles.header}>Student</Cell>
+      <Cell style={styles.header}>Student ID</Cell>
+      <Cell style={styles.header}>Email</Cell>
+      <Cell style={styles.header}>Year</Cell>
+      <Cell style={styles.header}>Course</Cell>
+      <Cell style={styles.header}>Duty</Cell>
+      <Cell style={styles.header}>Remaining Hours</Cell>
+      <Cell style={styles.header}>Duty Status</Cell>
+      <Cell style={styles.header}>Status</Cell>
+      <Cell style={styles.header}>Created</Cell>
+      <Cell style={styles.header}>Last Updated</Cell>
+      <ActionCell>
+        <Text style={[styles.header, styles.actionHeader]}>Actions</Text>
+      </ActionCell>
+    </View>
+  );
+
+  // ────── Body ──────
+  const Body = () => (
+    <View>
+      {scholars.map((s, idx) => (
+        <View key={s._id || idx} style={styles.row}>
+          <Cell>{s.name || "—"}</Cell>
+          <Cell>{s.id || "—"}</Cell>
+          <Cell>{s.email || "—"}</Cell>
+          <Cell>{s.year || "—"}</Cell>
+          <Cell>{s.course || "—"}</Cell>
+          <Cell>{s.duty || "—"}</Cell>
+          <Cell>{s.remainingHours ?? 0} hrs</Cell>
+          <Cell>{s.remainingHours === 0 ? "Completed" : "Not yet"}</Cell>
+          <Cell style={{ color: s.status === "Deactivated" ? "#d9534f" : "green" }}>
+            {s.status || "—"}
+          </Cell>
+          <Cell>
+            {s.createdAt
+              ? new Date(s.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "—"}
+          </Cell>
+          <Cell>
+            {s.updatedAt
+              ? new Date(s.updatedAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "—"}
+          </Cell>
+
+          {/* Action Buttons – fit perfectly */}
+          <ActionCell>
+            <TouchableOpacity style={styles.editBtn} onPress={() => onEdit(idx)}>
+              <Text style={styles.btnText}>Edit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.statusBtn,
+                {
+                  backgroundColor: s.status === "Active" ? "#d9534f" : "#28a745",
+                },
+              ]}
+              onPress={() => onToggleStatus(s)}
+            >
+              <Text style={styles.btnText}>
+                {s.status === "Active" ? "Deactivate" : "Re-Activate"}
+              </Text>
+            </TouchableOpacity>
+          </ActionCell>
+        </View>
+      ))}
+    </View>
+  );
 
   return (
-    <ScrollView
-      horizontal={screenWidth < tableMinWidth}
-      style={{ width: "100%" }}
-      contentContainerStyle={{
-        minWidth: screenWidth < tableMinWidth ? tableMinWidth : "100%",
-        paddingRight: 16,
-      }}
-    >
-      <View style={[styles.tableContainer, { width: "100%" }]}>
-        {/* Header */}
-        <View style={[styles.row, styles.headerRow]}>
-          <Text style={[styles.cell, styles.header]}>Student</Text>
-          <Text style={[styles.cell, styles.header]}>Student ID</Text>
-          <Text style={[styles.cell, styles.header]}>Email</Text>
-          <Text style={[styles.cell, styles.header]}>Year</Text>
-          <Text style={[styles.cell, styles.header]}>Course</Text>
-          <Text style={[styles.cell, styles.header]}>Duty</Text>
-          <Text style={[styles.cell, styles.header]}>Remaining Hours</Text>
-          <Text style={[styles.cell, styles.header]}>Duty Status</Text>
-          <Text style={[styles.cell, styles.header]}>Status</Text>
-          <Text style={[styles.cell, styles.header]}>Created</Text>
-          <Text style={[styles.cell, styles.header]}>Last Updated</Text>
-          <Text style={[styles.actionsCellHeader, styles.header]}>Actions</Text>
-        </View>
-
-        {/* Scholar Rows */}
-        {scholars.map((s, index) => (
-          <View key={index} style={styles.row}>
-            <Text style={styles.cell}>{s.name}</Text>
-            <Text style={styles.cell}>{s.id}</Text>
-            <Text style={styles.cell}>{s.email}</Text>
-            <Text style={styles.cell}>{s.year}</Text>
-            <Text style={styles.cell}>{s.course}</Text>
-            <Text style={styles.cell}>{s.duty}</Text>
-            <Text style={styles.cell}>{s.remainingHours ?? 0} hrs</Text>
-            <Text style={styles.cell}>
-              {s.remainingHours === 0 ? "✅ Completed" : "⏳ Not yet"}
-            </Text>
-            <Text
-              style={[
-                styles.cell,
-                { color: s.status === "Deactivated" ? "#d9534f" : "green" },
-              ]}
-            >
-              {s.status}
-            </Text>
-                <Text style={styles.cell}>
-  {s.createdAt
-    ? new Date(s.createdAt).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "—"}
-</Text>
-
-<Text style={styles.cell}>
-  {s.updatedAt
-    ? new Date(s.updatedAt).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "—"}
-</Text>
-
-            {/* Actions */}
-            <View style={styles.actionsCell}>
-           
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => onEdit(index)}
-              >
-                <Text style={styles.btnText}>Edit</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.statusBtn,
-                  {
-                    backgroundColor:
-                      s.status === "Active" ? "#d9534f" : "green",
-                  },
-                ]}
-                onPress={() => onToggleStatus(s)}
-              >
-                <Text style={styles.btnText}>
-                  {s.status === "Active" ? "Deactivate" : "Re-Activate"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
+    <View style={styles.container}>
+      {/* Sticky Header */}
+      <View style={styles.stickyHeaderWrapper}>
+        <ScrollView
+          ref={headerScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            bodyScrollRef.current?.scrollTo({
+              x: e.nativeEvent.contentOffset.x,
+              animated: false,
+            });
+          }}
+        >
+          <Header />
+        </ScrollView>
       </View>
-    </ScrollView>
+
+      {/* Scrollable Body */}
+      <ScrollView
+        ref={bodyScrollRef}
+        style={styles.bodyScroll}
+        horizontal={screenWidth < TABLE_MIN_WIDTH}
+        showsHorizontalScrollIndicator={true}
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          headerScrollRef.current?.scrollTo({
+            x: e.nativeEvent.contentOffset.x,
+            animated: false,
+          });
+        }}
+      >
+        <View
+          style={{
+            minWidth: screenWidth < TABLE_MIN_WIDTH ? TABLE_MIN_WIDTH : "100%",
+          }}
+        >
+          <Body />
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
+/* ──────────────────────────────── Styles ──────────────────────────────── */
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
+
+  // Sticky Header
+  stickyHeaderWrapper: {
+    backgroundColor: "#f4f4f4",
+    borderBottomWidth: 1,
+    borderColor: "#ddd",
+    zIndex: 10,
+  },
+  headerRow: {
+    flexDirection: "row",
+    backgroundColor: "#f4f4f4",
+    paddingVertical: 10,
+  },
+
+  // Body
+  bodyScroll: { flex: 1 },
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderColor: "#ddd",
-    paddingVertical: 8,
+    borderColor: "#eee",
+    paddingVertical: 10,
+    backgroundColor: "#fff",
   },
-  headerRow: {
-    backgroundColor: "#f4f4f4",
-  },
+
+  // Cells
   cell: {
-    flex: 1,
-    minWidth: 120,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     justifyContent: "center",
   },
-  actionsCellHeader: {
-    width: 200,
-    paddingHorizontal: 6,
-    justifyContent: "center",
+  cellText: {
+    fontSize: 13,
+    lineHeight: 18,
+    // Web + Mobile word break
+    ...(Platform.OS === "web"
+      ? { wordBreak: "break-word" }
+      : { flexShrink: 1 }),
   },
-  actionsCell: {
-    width: 200,
+
+  actionCell: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    gap: 6,
   },
+
+  // Header
   header: {
     fontWeight: "bold",
+    fontSize: 13,
+    color: "#333",
   },
+  actionHeader: {
+    textAlign: "center",
+    width: "100%",
+  },
+
+  // Buttons (fit in 180px)
   btnText: {
     color: "#fff",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     textAlign: "center",
   },
-  viewBtn: {
-    backgroundColor: "#0078d7",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
   editBtn: {
     backgroundColor: "#f0ad4e",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: 4,
-    marginRight: 6,
+    minWidth: 60,
   },
   statusBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: 4,
+    minWidth: 80,
   },
 });
 

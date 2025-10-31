@@ -4,16 +4,17 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
   Alert,
+  Dimensions,
 } from "react-native";
+import { FlatList } from "react-native";
 import ScholarDutyFormModal from "../components/ScholarDutyFormModal";
 import ScholarDutyViewModal from "../components/ScholarDutyViewModal";
-import DutyTable from "../components/DutyTable";
 import axios from "axios";
 
 const PRIMARY_COLOR = "#00A4DF";
+const { width } = Dimensions.get("window");
 
 const TIMES = [
   "7:00 AM", "7:30 AM", "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
@@ -24,230 +25,169 @@ const TIMES = [
 export default function DutyManagement() {
   const [duties, setDuties] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
   const [modalVisible, setModalVisible] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [viewDuty, setViewDuty] = useState(null);
   const [formData, setFormData] = useState({
-    id: "",
-    name: "",
-    year: "",
-    course: "",
-    dutyType: "",
+    id: "", name: "", year: "", course: "", dutyType: "",
     schedules: [{ day: "", startTime: "", endTime: "", room: "" }],
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  // ========================= FETCH =========================
   useEffect(() => {
     const fetchDuties = async () => {
       try {
-        const response = await axios.get("http://192.168.86.39:8000/api/duties");
-        console.log("Fetched duties:", response.data);
+        const response = await axios.get("http://192.168.1.7:8000/api/duties");
         setDuties(response.data);
       } catch (error) {
-        console.error("Error fetching duties:", error.response?.data || error.message);
-        Alert.alert("Error", "Failed to load duties. Please try again.");
+        console.error("Error fetching duties:", error);
+        Alert.alert("Error", "Failed to load duties.");
       }
     };
     fetchDuties();
   }, []);
 
+  // ========================= VALIDATION & OVERLAP =========================
   const validateScholarAccount = async (scholarId) => {
-    console.log("Validating scholar ID:", scholarId);
     try {
-      const response = await axios.get(`http://192.168.86.39:8000/api/scholars/${scholarId}`);
-      console.log("Validation response:", JSON.stringify(response.data, null, 2));
-      return response.data.exists === true;
-    } catch (error) {
-      console.error("Validation error:", error.response?.status, error.message, error.response?.data);
-      return false;
-    }
+      const res = await axios.get(`http://192.168.1.7:8000/api/scholars/${scholarId}`);
+      return res.data.exists === true;
+    } catch { return false; }
   };
 
-  const doTimeRangesOverlap = (day1, start1, end1, day2, start2, end2) => {
-    console.log(`Checking overlap: ${day1} ${start1}-${end1} vs ${day2} ${start2}-${end2}`);
-    if (day1 !== day2) {
-      console.log("No overlap: different days");
-      return false;
-    }
-    const startIndex1 = TIMES.indexOf(start1);
-    const endIndex1 = TIMES.indexOf(end1);
-    const startIndex2 = TIMES.indexOf(start2);
-    const endIndex2 = TIMES.indexOf(end2);
-    if (startIndex1 === -1 || endIndex1 === -1 || startIndex2 === -1 || endIndex2 === -1) {
-      console.log("No overlap: invalid time indices", { startIndex1, endIndex1, startIndex2, endIndex2 });
-      return false;
-    }
-    const hasOverlap = startIndex1 < endIndex2 && startIndex2 < endIndex1;
-    console.log(`Overlap result: ${hasOverlap}`);
-    return hasOverlap;
+  const doTimeRangesOverlap = (day1, s1, e1, day2, s2, e2) => {
+    if (day1 !== day2) return false;
+    const i1 = TIMES.indexOf(s1), i2 = TIMES.indexOf(e1);
+    const j1 = TIMES.indexOf(s2), j2 = TIMES.indexOf(e2);
+    if (i1 === -1 || i2 === -1 || j1 === -1 || j2 === -1) return false;
+    return i1 < j2 && j1 < i2;
   };
 
-  const checkScheduleOverlap = (newSchedules, existingDuties, scholarId, isEditing) => {
-    console.log("Checking overlaps for scholar:", scholarId, "Schedules:", newSchedules);
-
-    // Filter duties to only those belonging to the same scholar
-    const sameScholarDuties = existingDuties.filter((d) => d.id === scholarId);
-
-    return newSchedules.some((newSched, index) => {
-      console.log(`Checking new schedule ${index + 1}:`, newSched);
-      if (!newSched.day || !newSched.startTime || !newSched.endTime) {
-        console.log("Skipping incomplete schedule");
-        return false;
-      }
-
-      return sameScholarDuties.some((duty) => {
-        // Skip the duty being edited (if editing)
-        if (isEditing && duty._id === newSchedules[index]?._id) {
-          console.log(`Skipping duty for editing: ${duty._id}`);
-          return false;
-        }
-
-        const [startTime, endTime] = duty.time.split(" - ");
-        const overlap = doTimeRangesOverlap(
-          newSched.day,
-          newSched.startTime,
-          newSched.endTime,
-          duty.day,
-          startTime,
-          endTime
-        );
-        if (overlap) {
-          console.log(`Overlap detected with duty: ${duty.day} ${duty.time} (ID: ${duty.id})`);
-        }
-        return overlap;
+  const checkScheduleOverlap = (newS, existing, id, editing) => {
+    const same = existing.filter(d => d.id === id);
+    return newS.some((ns, i) => {
+      if (!ns.day || !ns.startTime || !ns.endTime) return false;
+      return same.some(d => {
+        if (editing && d._id === newS[i]?._id) return false;
+        const [s, e] = d.time.split(" - ");
+        return doTimeRangesOverlap(ns.day, ns.startTime, ns.endTime, d.day, s, e);
       });
     });
   };
 
+  // ========================= SAVE =========================
   const saveDuty = async (duty, isEditing) => {
-    console.log("Attempting to save duty:", duty);
-    if (!duty.id || !duty.dutyType || !duty.schedules?.length) {
-      throw new Error("Scholar ID, duty type, and at least one schedule are required.");
-    }
+    if (!duty.id || !duty.dutyType || !duty.schedules?.length)
+      throw new Error("ID, duty type, and schedule required.");
 
-    const hasAccount = await validateScholarAccount(duty.id);
-    console.log("Account validation result:", hasAccount);
-    if (!hasAccount) {
-      throw new Error("Unknown account. Please register first.");
-    }
+    if (!await validateScholarAccount(duty.id))
+      throw new Error("Unknown account.");
 
-    // Check for overlaps with existing duties for the same scholar
-    if (checkScheduleOverlap(duty.schedules, duties, duty.id, isEditing)) {
-      throw new Error("The selected schedule overlaps with another for this scholar. Please choose a different time slot.");
-    }
+    if (checkScheduleOverlap(duty.schedules, duties, duty.id, isEditing))
+      throw new Error("Schedule conflict.");
 
-    const dutiesToSave = duty.schedules.map((s) => ({
-      name: duty.name,
-      id: duty.id,
-      year: duty.year,
-      course: duty.course,
-      dutyType: duty.dutyType,
-      day: s.day,
+    const toSave = duty.schedules.map(s => ({
+      name: duty.name, id: duty.id, year: duty.year, course: duty.course,
+      dutyType: duty.dutyType, day: s.day,
       time: `${s.startTime} - ${s.endTime}`,
       room: duty.dutyType === "Attendance Checker" ? "N/A" : s.room || "",
       status: "Active",
     }));
 
-    console.log("Data to save:", dutiesToSave);
-
     try {
       if (isEditing) {
-        // Delete existing duties for the scholar
-        const existingDuties = duties.filter((d) => d.id === duty.id);
-        await Promise.all(
-          existingDuties.map((d) =>
-            d._id ? axios.delete(`http://192.168.86.39:8000/api/duties/${d._id}`) : Promise.resolve()
-          )
-        );
-        console.log("Deleted existing duties for scholar ID:", duty.id);
+        const existing = duties.filter(d => d.id === duty.id);
+        await Promise.all(existing.map(d => d._id ? axios.delete(`http://192.168.1.7:8000/api/duties/${d._id}`) : null));
       }
 
-      // Create new duties
-      const responses = await Promise.all(
-        dutiesToSave.map((dutyItem) =>
-          axios.post("http://192.168.86.39:8000/api/duties", dutyItem)
-        )
-      );
-      const savedDuties = responses.map((r) => r.data);
-      console.log("Saved duties:", savedDuties);
+      const res = await Promise.all(toSave.map(item => axios.post("http://192.168.1.7:8000/api/duties", item)));
+      const saved = res.map(r => r.data);
 
       if (isEditing) {
-        // Replace all duties for the scholar in the UI
-        const updatedDuties = duties.filter((d) => d.id !== duty.id);
-        setDuties([...updatedDuties, ...savedDuties]);
+        setDuties(prev => [...prev.filter(d => d.id !== duty.id), ...saved]);
       } else {
-        setDuties((prevDuties) => [...prevDuties, ...savedDuties]);
+        setDuties(prev => [...prev, ...saved]);
       }
-
       return { success: true };
-    } catch (error) {
-      console.error("Error saving duty:", error.response?.status, error.message, error.response?.data);
-      throw error;
+    } catch (e) {
+      console.error(e);
+      throw e;
     }
   };
 
+  // ========================= SCHOLAR LOOKUP =========================
   const handleIdChange = (id) => {
-    console.log("ID changed to:", id);
-    setFormData((prev) => ({ ...prev, id }));
-    if (id.length === 14 && /^[0-9-]+$/.test(id)) {
-      console.log("Fetching details for ID:", id);
-      fetchScholarDetails(id);
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        name: "",
-        year: "",
-        course: "",
-        dutyType: "",
-      }));
-    }
+    setFormData(prev => ({ ...prev, id }));
+    if (id.length === 14 && /^[0-9-]+$/.test(id)) fetchScholarDetails(id);
+    else setFormData(prev => ({ ...prev, name: "", year: "", course: "", dutyType: "" }));
   };
 
-  const fetchScholarDetails = async (scholarId) => {
+  const fetchScholarDetails = async (id) => {
     setIsLoading(true);
-    console.log("Fetching scholar details for:", scholarId);
     try {
-      const response = await axios.get(`http://192.168.86.39:8000/api/scholars/${scholarId}`);
-      console.log("Scholar details response:", JSON.stringify(response.data, null, 2));
-      if (!response.data.exists || !response.data.scholar) {
-        throw new Error("Scholar not found");
-      }
-      const scholar = response.data.scholar;
-      const validDutyTypes = ["Student Facilitator", "Attendance Checker"];
-      const fetchedDutyType = scholar.duty && validDutyTypes.includes(scholar.duty) ? scholar.duty : validDutyTypes[0];
-      const newFormData = {
-        id: scholarId,
-        name: scholar.name || "",
-        year: scholar.year || "",
-        course: scholar.course || "",
-        dutyType: fetchedDutyType,
-        schedules: formData.schedules, // Preserve existing schedules
-      };
-      setFormData(newFormData);
-      console.log("Updated formData with scholar details:", newFormData);
-    } catch (error) {
-      console.error("Fetch scholar details error:", error.response?.status, error.message, error.response?.data);
-      Alert.alert("Error", error.message === "Scholar not found" ? "Scholar not found. Please check the ID." : "Failed to fetch scholar details. Please try again.");
-      setFormData((prev) => ({
-        ...prev,
-        name: "",
-        year: "",
-        course: "",
-        dutyType: "",
+      const res = await axios.get(`http://192.168.1.7:8000/api/scholars/${id}`);
+      if (!res.data.exists) throw new Error("Scholar not found");
+      const s = res.data.scholar;
+      const duty = ["Student Facilitator", "Attendance Checker"].includes(s.duty) ? s.duty : "Student Facilitator";
+      setFormData(prev => ({
+        ...prev, id, name: s.name || "", year: s.year || "", course: s.course || "", dutyType: duty
       }));
+    } catch (e) {
+      Alert.alert("Error", e.message === "Scholar not found" ? "Not found." : "Failed to load.");
+      setFormData(prev => ({ ...prev, name: "", year: "", course: "", dutyType: "" }));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filteredDuties = duties.filter(
-    (d) =>
-      d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.id?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ========================= FILTER =========================
+  const filtered = duties.filter(duty => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const inc = v => v?.toString().toLowerCase().includes(q);
 
+    const all = inc(duty.name) || inc(duty.id) || inc(duty.dutyType) ||
+                inc(duty.day) || inc(duty.time) || inc(duty.room) ||
+                inc(duty.year) || inc(duty.course) || inc(duty.status);
+
+    if (!q.includes(":")) return all;
+
+    return q.split(/\s+/).every(part => {
+      if (!part.includes(":")) return all;
+      const [k, v] = part.split(":").map(s => s.trim().toLowerCase());
+      if (!v) return true;
+      switch (k) {
+        case "dutytype": case "type":   return duty.dutyType?.toLowerCase().includes(v);
+        case "day":                     return duty.day?.toLowerCase().includes(v);
+        case "time":                    return duty.time?.toLowerCase().includes(v);
+        case "room":                    return duty.room?.toLowerCase().includes(v);
+        case "year":                    return duty.year?.toLowerCase().includes(v);
+        case "course":                  return duty.course?.toLowerCase().includes(v);
+        case "id": case "scholar":      return duty.id?.toLowerCase().includes(v);
+        case "name":                    return duty.name?.toLowerCase().includes(v);
+        case "status":                  return duty.status?.toLowerCase().includes(v);
+        default:                        return all;
+      }
+    });
+  });
+
+  // ========================= PAGINATION =========================
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const startIdx = (currentPage - 1) * rowsPerPage;
+  const paginatedDuties = filtered.slice(startIdx, startIdx + rowsPerPage);
+
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
+  // ========================= RENDER =========================
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Duty Management</Text>
         <TouchableOpacity
@@ -256,11 +196,7 @@ export default function DutyManagement() {
             setModalVisible(true);
             setEditIndex(null);
             setFormData({
-              id: "",
-              name: "",
-              year: "",
-              course: "",
-              dutyType: "",
+              id: "", name: "", year: "", course: "", dutyType: "",
               schedules: [{ day: "", startTime: "", endTime: "", room: "" }],
             });
           }}
@@ -269,56 +205,126 @@ export default function DutyManagement() {
         </TouchableOpacity>
       </View>
 
-      <TextInput
-        placeholder="Search duty..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        style={styles.search}
-      />
+      {/* Search + Clear */}
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+        <TextInput
+          placeholder="Search Duty..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={[styles.search, { flex: 1, marginRight: 8 }]}
+        />
+        {searchQuery ? (
+          <TouchableOpacity onPress={() => setSearchQuery("")} style={{ padding: 4 }}>
+            <Text style={{ fontSize: 18, color: "#999" }}>X</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
+      {/* Count */}
       <Text style={styles.sectionTitle}>
-        Assigned Duties ({filteredDuties.length})
+        Assigned Duties ({filtered.length}) – Page {currentPage} of {totalPages || 1}
       </Text>
 
-      <DutyTable
-        duties={filteredDuties}
-        onEdit={(index) => {
-          setEditIndex(index);
-          setModalVisible(true);
-          // Load all schedules for the scholar
-          const scholarDuties = duties.filter(d => d.id === duties[index].id);
-          const schedules = scholarDuties.map(d => ({
-            day: d.day,
-            startTime: d.time.split(" - ")[0],
-            endTime: d.time.split(" - ")[1],
-            room: d.room,
-          }));
-          setFormData({
-            ...duties[index],
-            schedules: schedules.length > 0 ? schedules : [{ day: "", startTime: "", endTime: "", room: "" }],
-          });
-        }}
-        onView={(duty) => setViewDuty(duty)}
-        onToggleStatus={(index) => {
-          const updated = [...duties];
-          const currentStatus = updated[index].status;
-          updated[index].status =
-            currentStatus === "Active" ? "Deactivated" : "Active";
-          setDuties(updated);
-        }}
+      {/* ======== TABLE WITH STICKY HEADER ======== */}
+      <FlatList
+        data={paginatedDuties}
+        keyExtractor={(item, idx) => item._id || `${item.id}-${idx}`}
+        ListHeaderComponent={() => (
+          <View style={styles.tableHeader}>
+            <Text style={[styles.th, { flex: 2 }]}>Name</Text>
+            <Text style={[styles.th, { flex: 2 }]}>ID</Text>
+            <Text style={[styles.th, { flex: 2 }]}>Duty Type</Text>
+            <Text style={[styles.th, { flex: 1 }]}>Day</Text>
+            <Text style={[styles.th, { flex: 2 }]}>Time</Text>
+            <Text style={[styles.th, { flex: 1 }]}>Room</Text>
+            <Text style={[styles.th, { flex: 1 }]}>Status</Text>
+            <Text style={[styles.th, { flex: 2 }]}>Actions</Text>
+          </View>
+        )}
+        stickyHeaderIndices={[0]}
+        renderItem={({ item, index }) => (
+          <DutyTableRow
+            duty={item}
+            index={startIdx + index}
+            onEdit={() => {
+              setEditIndex(startIdx + index);
+              setModalVisible(true);
+              const allForScholar = duties.filter(d => d.id === item.id);
+              const schedules = allForScholar.map(d => ({
+                day: d.day,
+                startTime: d.time.split(" - ")[0],
+                endTime: d.time.split(" - ")[1],
+                room: d.room,
+              }));
+              setFormData({
+                ...item,
+                schedules: schedules.length ? schedules : [{ day: "", startTime: "", endTime: "", room: "" }],
+              });
+            }}
+            onView={() => setViewDuty(item)}
+            onToggleStatus={async () => {
+              const i = duties.findIndex(d => d._id === item._id);
+              if (i === -1) return;
+              const newStatus = duties[i].status === "Active" ? "Deactivated" : "Active";
+              try {
+                await axios.patch(`http://192.168.1.7:8000/api/duties/${item._id}/status`, { status: newStatus });
+                setDuties(prev => {
+                  const upd = [...prev];
+                  upd[i].status = newStatus;
+                  return upd;
+                });
+              } catch (e) {
+                Alert.alert("Error", "Failed to update status");
+              }
+            }}
+          />
+        )}
+        style={{ flex: 1 }}
       />
 
+      {/* ======== PAGINATION BAR ======== */}
+      <View style={styles.pagination}>
+        <TouchableOpacity
+          onPress={() => goToPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          style={[styles.pageBtn, currentPage === 1 && styles.disabledBtn]}
+        >
+          <Text style={styles.pageBtnText}>Prev</Text>
+        </TouchableOpacity>
+
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+          <TouchableOpacity
+            key={page}
+            onPress={() => goToPage(page)}
+            style={[
+              styles.pageNum,
+              currentPage === page && styles.activePage
+            ]}
+          >
+            <Text style={[
+              styles.pageNumText,
+              currentPage === page && styles.activePageText
+            ]}>{page}</Text>
+          </TouchableOpacity>
+        ))}
+
+        <TouchableOpacity
+          onPress={() => goToPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          style={[styles.pageBtn, currentPage === totalPages && styles.disabledBtn]}
+        >
+          <Text style={styles.pageBtnText}>Next</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ======== MODALS ======== */}
       <ScholarDutyFormModal
         visible={modalVisible}
         onClose={() => {
           setModalVisible(false);
           setEditIndex(null);
           setFormData({
-            id: "",
-            name: "",
-            year: "",
-            course: "",
-            dutyType: "",
+            id: "", name: "", year: "", course: "", dutyType: "",
             schedules: [{ day: "", startTime: "", endTime: "", room: "" }],
           });
         }}
@@ -327,18 +333,10 @@ export default function DutyManagement() {
         onIdChange={handleIdChange}
         YEARS={["1st Year", "2nd Year", "3rd Year", "4th Year"]}
         COURSES={[
-          "BS ACCOUNTANCY",
-          "BS HOSPITALITY MANAGEMENT",
-          "BS TOURISM MANAGEMENT",
-          "BSBA- MARKETING MANAGEMENT",
-          "BSBA- BANKING & MICROFINANCE",
-          "BACHELOR OF ELEMENTARY EDUCATION",
-          "BSED- ENGLISH",
-          "BSED- FILIPINO",
-          "BS CRIMINOLOGY",
-          "BS CIVIL ENGINEERING",
-          "BS INFORMATION TECHNOLOGY",
-          "BS NURSING",
+          "BS ACCOUNTANCY", "BS HOSPITALITY MANAGEMENT", "BS TOURISM MANAGEMENT",
+          "BSBA- MARKETING MANAGEMENT", "BSBA- BANKING & MICROFINANCE",
+          "BACHELOR OF ELEMENTARY EDUCATION", "BSED- ENGLISH", "BSED- FILIPINO",
+          "BS CRIMINOLOGY", "BS CIVIL ENGINEERING", "BS INFORMATION TECHNOLOGY", "BS NURSING",
         ]}
         DUTY_TYPES={["Student Facilitator", "Attendance Checker"]}
         DAYS={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
@@ -354,10 +352,9 @@ export default function DutyManagement() {
       <ScholarDutyViewModal
         duty={viewDuty}
         onClose={() => setViewDuty(null)}
-        onDeactivate={(index) => {
-          const updated = [...duties];
-          updated.splice(index, 1);
-          setDuties(updated);
+        onDeactivate={(idx) => {
+          const upd = duties.filter((_, i) => i !== idx);
+          setDuties(upd);
           setViewDuty(null);
         }}
       />
@@ -365,29 +362,137 @@ export default function DutyManagement() {
   );
 }
 
+// ====================== ROW COMPONENT (FIXED BUTTONS) ======================
+const DutyTableRow = ({ duty, onEdit, onView, onToggleStatus }) => (
+  <View style={styles.tableRow}>
+    <Text style={[styles.td, { flex: 2 }]} numberOfLines={1}>{duty.name}</Text>
+    <Text style={[styles.td, { flex: 2 }]}>{duty.id}</Text>
+    <Text style={[styles.td, { flex: 2 }]}>{duty.dutyType}</Text>
+    <Text style={[styles.td, { flex: 1 }]}>{duty.day}</Text>
+    <Text style={[styles.td, { flex: 2 }]}>{duty.time}</Text>
+    <Text style={[styles.td, { flex: 1 }]}>{duty.room}</Text>
+    <Text style={[styles.td, { flex: 1, color: duty.status === "Active" ? "#28a745" : "#dc3545" }]}>
+      {duty.status}
+    </Text>
+
+    {/* ========== ACTION BUTTONS (Colored & Visible) ========== */}
+    <View style={[styles.td, { flex: 2, flexDirection: "row", justifyContent: "space-around", alignItems: "center" }]}>
+      <TouchableOpacity
+        style={styles.viewBtn}
+        onPress={onView}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.btnText}>View</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.editBtn}
+        onPress={onEdit}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.btnText}>Edit</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.statusBtn,
+          {
+            backgroundColor: duty.status === "Active" ? "#dc3545" : "#28a745",
+          },
+        ]}
+        onPress={onToggleStatus}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.btnText}>
+          {duty.status === "Active" ? "Deactivate" : "Activate"}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
+// ====================== STYLES ======================
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   title: { fontSize: 20, fontWeight: "bold", marginTop: 30 },
-  createBtn: {
-    backgroundColor: PRIMARY_COLOR,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 6,
-    marginTop: 30,
-  },
+  createBtn: { backgroundColor: PRIMARY_COLOR, paddingVertical: 10, paddingHorizontal: 15, borderRadius: 6, marginTop: 30 },
   btnText: { color: "white", fontWeight: "600" },
-  search: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 8,
-    marginBottom: 12,
-  },
+  search: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 8 },
   sectionTitle: { fontSize: 18, fontWeight: "600", marginVertical: 8 },
+
+  // Table
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#f0f0f0",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 2,
+    borderColor: "#ddd",
+  },
+  th: { fontWeight: "bold", textAlign: "center" },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderColor: "#eee",
+    alignItems: "center",
+  },
+  td: { fontSize: 14, textAlign: "center" },
+
+  // ========== ACTION BUTTONS (Colored) ==========
+  viewBtn: {
+    backgroundColor: "#007bff", // Blue
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    minWidth: 60,
+    opacity: 1,
+  },
+  editBtn: {
+    backgroundColor: "#fd7e14", // Orange
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    minWidth: 60,
+    opacity: 1,
+  },
+  statusBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    minWidth: 80,
+    opacity: 1,
+  },
+
+  // Pagination
+  pagination: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    flexWrap: "wrap",
+  },
+  pageBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: PRIMARY_COLOR,
+    borderRadius: 6,
+    marginHorizontal: 4,
+  },
+  disabledBtn: { backgroundColor: "#ccc" },
+  pageBtnText: { color: "#fff", fontWeight: "600" },
+  pageNum: {
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    marginHorizontal: 4,
+    borderRadius: 18,
+    backgroundColor: "#eee",
+  },
+  activePage: { backgroundColor: PRIMARY_COLOR },
+  pageNumText: { fontWeight: "600" },
+  activePageText: { color: "#fff" },
 });

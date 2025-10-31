@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { jwtDecode } from 'jwt-decode'; // Ensure this is installed
+import { jwtDecode } from 'jwt-decode';
 
 const ACDashboard = () => {
   const [stats, setStats] = useState([]);
@@ -47,18 +47,14 @@ const ACDashboard = () => {
 
     const fetchData = async () => {
       try {
-        console.log('jwtDecode module loaded:', typeof jwtDecode);
         const token = await AsyncStorage.getItem('token');
-        console.log('Retrieved token:', token);
         if (!token) throw new Error('No authentication token found. Please log in.');
 
         let studentId;
         try {
           const decoded = jwtDecode(token);
           studentId = decoded?._id;
-          console.log('Decoded studentId:', studentId);
         } catch (decodeError) {
-          console.error('Token decoding error:', decodeError);
           throw new Error('Invalid token format or decoding issue. Please log in again.');
         }
 
@@ -68,13 +64,10 @@ const ACDashboard = () => {
         setError(null);
 
         const username = await AsyncStorage.getItem('username');
-        console.log('Retrieved username:', username);
 
-        const dutiesUrl = `http://192.168.86.39:8000/api/duties?id=${encodeURIComponent(username)}`;
-        const attendanceUrl = `http://192.168.86.39:8000/api/attendance?studentId=${encodeURIComponent(username)}`;
-        const checkerAttendanceUrl = `http://192.168.86.39:8000/api/checkerAttendance?studentId=${encodeURIComponent(username)}`;
-
-        console.log('Fetching from:', { dutiesUrl, attendanceUrl, checkerAttendanceUrl });
+        const dutiesUrl = `http://192.168.1.7:8000/api/duties?id=${encodeURIComponent(username)}`;
+        const attendanceUrl = `http://192.168.1.7:8000/api/attendance?studentId=${encodeURIComponent(username)}`;
+        const checkerAttendanceUrl = `http://192.168.1.7:8000/api/checkerAttendance?studentId=${encodeURIComponent(username)}`;
 
         const [dutiesResponse, attendanceResponse, checkerAttendanceResponse] = await Promise.all([
           fetch(dutiesUrl),
@@ -90,17 +83,9 @@ const ACDashboard = () => {
         const allAttendance = await attendanceResponse.json();
         const allCheckerAttendance = await checkerAttendanceResponse.json();
 
-        console.log('ALL Duties details:', allDuties.map(d => ({ id: d.id, day: d.day, status: d.status })));
-        console.log('ALL Attendance details:', allAttendance.map(a => ({ studentId: a.studentId, encodedTime: a.encodedTime })));
-        console.log('ALL CheckerAttendance details:', allCheckerAttendance.map(ca => ({ studentId: ca.studentId, checkInTime: ca.checkInTime })));
-
         const duties = allDuties.filter((duty) => duty.id === username);
         const attendance = allAttendance.filter((att) => att.studentId === username);
         const checkerAttendance = allCheckerAttendance.filter((att) => att.studentId === username);
-
-        console.log('FILTERED Duties:', duties);
-        console.log('FILTERED Attendance:', attendance);
-        console.log('FILTERED CheckerAttendance:', checkerAttendance);
 
         const today = moment().format('YYYY-MM-DD');
         const todayDayName = moment().format('dddd');
@@ -119,7 +104,7 @@ const ACDashboard = () => {
         ).length;
 
         let currentShift = 'No Active Shift';
-        const currentTime = moment(); // 10:43 PM PST, Wednesday, October 22, 2025
+        const currentTime = moment();
         const activeDuty = duties.find((duty) => {
           if (duty.day !== todayDayName || duty.status !== 'Active') return false;
           const { startTime, endTime } = parseDutyTime(duty.time, today);
@@ -167,6 +152,53 @@ const ACDashboard = () => {
           return total;
         }, 0);
 
+        // ———————————————————————————————————————
+        // ALL-TIME + TODAY ABSENCES COUNTER
+        // ———————————————————————————————————————
+        const todayStr = moment().format('YYYY-MM-DD');
+
+        // Include TODAY even if no check-in
+        const historicalDates = [...new Set(checkerAttendance.map(att => moment(att.checkInTime).format('YYYY-MM-DD')))];
+        if (!historicalDates.includes(todayStr)) {
+          historicalDates.push(todayStr);
+        }
+
+        let absentCount = 0;
+
+        historicalDates.forEach(dateStr => {
+          const isToday = dateStr === todayStr;
+          const dayName = moment(dateStr).format('dddd');
+          const dateActiveDuties = duties.filter(d => d.day === dayName && d.status === 'Active');
+
+          dateActiveDuties.forEach(duty => {
+            const { startTime, endTime } = parseDutyTime(duty.time, dateStr);
+            if (!startTime || !endTime) return;
+
+            // Skip if today and shift hasn't ended
+            if (isToday && moment().isBefore(endTime)) {
+              return;
+            }
+
+            // Check for completed checkout
+            const hasCompleted = checkerAttendance.some(att => {
+              const checkIn = moment(att.checkInTime);
+              const checkOut = att.checkOutTime ? moment(att.checkOutTime) : null;
+              return (
+                checkIn.format('YYYY-MM-DD') === dateStr &&
+                att.location === duty.room &&
+                checkOut && checkOut.isAfter(endTime)
+              );
+            });
+
+            if (!hasCompleted) {
+              absentCount++;
+            }
+          });
+        });
+
+        // ———————————————————————————————————————
+        // Set Stats (with Absences)
+        // ———————————————————————————————————————
         if (isMounted) {
           setStats([
             {
@@ -198,12 +230,18 @@ const ACDashboard = () => {
               color: '#8B5CF6',
               progress: progressPercentage,
             },
+            {
+              title: 'Absences',
+              value: absentCount === 0 ? '–' : absentCount,
+              subtitle: absentCount === 0 ? 'None missed' : 'All time',
+              icon: 'alert-circle-outline',
+              color: '#EF4444',
+            },
           ]);
 
           setSchedule(todaySchedule);
         }
       } catch (error) {
-        console.error('Error fetching data:', error.message);
         if (isMounted) setError(`Failed to load dashboard data: ${error.message}`);
       } finally {
         if (isMounted) setLoading(false);
